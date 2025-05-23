@@ -1,6 +1,6 @@
 AIDLINK - DECENTRALIZED AID REQUEST PLATFORM
 
-AidLink is a decentralized platform that allows users in need to create aid requests and receive support from verified donors. The app supports wallet connection, dynamic aid request forms, file uploads, and categorized listings. Built with modern technologies and optimized for both light and dark themes.
+AidLink is a decentralized platform that allows users in need to create aid requests and receive support from verified donors. The app supports Sui Crypto wallet connection, dynamic aid request forms, file uploads, and categorized listings. Built with modern technologies and optimized for a great User experience.
 
 
 FEATURES
