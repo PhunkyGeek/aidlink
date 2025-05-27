@@ -14,9 +14,10 @@ import {
 } from 'firebase/firestore';
 import { withRole } from '@/lib/withRole';
 import { withAuth } from '@/lib/withAuth';
+import { Validator } from '../../../../types/validator';
 
 function ValidatorsPage() {
-  const [validators, setValidators] = useState<any[]>([]);
+  const [validators, setValidators] = useState<Validator[]>([]);
   const [email, setEmail] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -26,7 +27,16 @@ function ValidatorsPage() {
 
   async function fetchValidators() {
     const snapshot = await getDocs(collection(db, 'validators'));
-    setValidators(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    const data = snapshot.docs.map(doc => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        email: d.email,
+        status: d.status,
+        createdAt: d.createdAt, // optional
+      };
+    });
+    setValidators(data);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -54,10 +64,11 @@ function ValidatorsPage() {
     fetchValidators();
   }
 
-  function handleEdit(v: any) {
+  function handleEdit(v: Validator) {
     setEmail(v.email);
     setEditingId(v.id);
   }
+  
 
   return (
     <div className="space-y-6">

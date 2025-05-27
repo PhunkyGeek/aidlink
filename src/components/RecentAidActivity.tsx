@@ -1,22 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  RiRefreshLine,
-  RiHeartAddLine,
-  RiShareLine
-} from 'react-icons/ri';
-import { 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
-  MapPin, 
-  Layers, 
-  DollarSign 
-} from 'lucide-react';
+import Image from 'next/image';
+import { RiRefreshLine, RiHeartAddLine, RiShareLine } from 'react-icons/ri';
+import { Clock, CheckCircle, AlertCircle, MapPin, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-type AidRequest = {
+interface AidRequest {
   id: string;
   title: string;
   description: string;
@@ -27,18 +17,17 @@ type AidRequest = {
   location: string;
   createdAt: string;
   imageUrl?: string;
-};
+}
 
-export default function RecentAidActivity({ 
-  refreshing, 
-  setRefreshing 
-}: { 
-  refreshing: boolean; 
-  setRefreshing: (val: boolean) => void 
-}) {
+interface RecentAidActivityProps {
+  refreshing: boolean;
+  setRefreshing: (val: boolean) => void;
+}
+
+export default function RecentAidActivity({ refreshing, setRefreshing }: RecentAidActivityProps) {
   const [statusFilter, setStatusFilter] = useState('all');
-  
-  // Mock data - replace with your actual data fetching
+
+  // Mock data - replace with actual data fetching
   const mockRequests: AidRequest[] = [
     {
       id: 'req-001',
@@ -61,7 +50,7 @@ export default function RecentAidActivity({
       targetAmount: 8000,
       fundedAmount: 1200,
       location: 'Nairobi, Kenya',
-      createdAt: '2023-10-18T09:15:00Z'
+      createdAt: '2023-10-18T09:15:00Z',
     },
     {
       id: 'req-003',
@@ -74,19 +63,23 @@ export default function RecentAidActivity({
       location: 'Accra, Ghana',
       createdAt: '2023-10-10T16:45:00Z',
       // imageUrl: '/medical-aid.jpg'
-    }
+    },
   ];
 
-  const filteredRequests = statusFilter === 'all' 
-    ? mockRequests 
-    : mockRequests.filter(req => req.status === statusFilter);
+  const filteredRequests = statusFilter === 'all'
+    ? mockRequests
+    : mockRequests.filter((req) => req.status === statusFilter);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'pending': return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'rejected': return <AlertCircle className="w-4 h-4 text-red-500" />;
-      default: return null;
+      case 'approved':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'pending':
+        return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'rejected':
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return null;
     }
   };
 
@@ -101,7 +94,7 @@ export default function RecentAidActivity({
           <RiRefreshLine className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
           Recent Aid Requests
         </h2>
-        <button 
+        <button
           onClick={() => setRefreshing(true)}
           className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg flex items-center gap-1"
         >
@@ -109,7 +102,7 @@ export default function RecentAidActivity({
           Refresh
         </button>
       </div>
-      
+
       <div className="bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-700">
         {/* Filter Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
@@ -146,14 +139,17 @@ export default function RecentAidActivity({
               >
                 {request.imageUrl && (
                   <div className="relative h-40 w-full">
-                    <img 
-                      src={request.imageUrl} 
+                    <Image
+                      src={request.imageUrl}
                       alt={request.title}
+                      width={400}
+                      height={160}
                       className="w-full h-full object-cover"
+                      unoptimized={request.imageUrl.includes('ipfs')}
                     />
                   </div>
                 )}
-                
+
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-lg line-clamp-1">{request.title}</h3>
@@ -170,7 +166,7 @@ export default function RecentAidActivity({
                       <MapPin className="w-4 h-4 text-gray-400" />
                       <span>{request.location}</span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 text-sm">
                       <Layers className="w-4 h-4 text-gray-400" />
                       <span>{request.category}</span>
@@ -184,8 +180,8 @@ export default function RecentAidActivity({
                         </span>
                       </div>
                       <div className="w-full bg-gray-600 rounded-full h-2">
-                        <div 
-                          className="bg-purple-500 h-2 rounded-full" 
+                        <div
+                          className="bg-purple-500 h-2 rounded-full"
                           style={{ width: `${getProgressPercentage(request.fundedAmount, request.targetAmount)}%` }}
                         ></div>
                       </div>

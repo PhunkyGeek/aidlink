@@ -6,14 +6,18 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { withRole } from '@/lib/withRole';
 import { withAuth } from '@/lib/withAuth';
+import { UserRole } from '@/utils/getUserRole';
 
 function UsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserRole[]>([]);
 
   useEffect(() => {
     async function fetchUsers() {
       const snapshot = await getDocs(collection(db, 'userRoles'));
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const users: UserRole[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<UserRole, 'id'>),
+      }));
       setUsers(users);
     }
     fetchUsers();

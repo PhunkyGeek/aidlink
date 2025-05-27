@@ -5,8 +5,7 @@ import { useState } from 'react';
 import { 
   useSuiClientQuery,
   useCurrentAccount,
-  useSignAndExecuteTransaction,
-  ConnectButton
+  useSignAndExecuteTransaction
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import {
@@ -22,7 +21,6 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useFetchFundedRequests } from '@/hooks/useFetchFundedRequests';
 import toast from 'react-hot-toast';
 import QRCode from 'react-qr-code';
-import { bcs } from '@mysten/sui/bcs';
 import Link from 'next/link';
 import { IconConnectWallet } from '@/components/ui/IconConnectWallet';
 import { WalletConnect } from '@/components/WalletConnect';
@@ -324,8 +322,7 @@ export default function ConnectRecWalletPage() {
                       1
                     </span>
                     <p>
-                      Enter the recipient's wallet address and the amount of SUI
-                      you want to send
+                      {"Enter the recipient's wallet address and the amount of SUI you want to send"}
                     </p>
                   </li>
                   <li className="flex items-start gap-2">

@@ -1,7 +1,6 @@
 // src/utils/WalletUtils.ts
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { fromBase64 } from '@mysten/sui/utils';
-import { encrypt, decrypt } from 'crypto-js/aes';
 import CryptoJS from 'crypto-js';
 
 export const generateNewWallet = () => {

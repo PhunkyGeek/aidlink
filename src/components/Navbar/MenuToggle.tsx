@@ -1,22 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import { RiMenuLine } from 'react-icons/ri';
+import { RiMenuLine, RiCloseLine } from 'react-icons/ri';
 
-export default function MenuToggle() {
+interface MenuToggleProps {
+  onToggle?: (isOpen: boolean) => void;
+}
+
+export default function MenuToggle({ onToggle }: MenuToggleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => {
-    setIsOpen(prev => !prev);
-    // Placeholder: Hook into a sidebar toggle or emit event if needed
+    setIsOpen((prev) => {
+      const newState = !prev;
+      if (onToggle) {
+        onToggle(newState);
+      }
+      return newState;
+    });
   };
 
   return (
     <button
       onClick={toggleMenu}
       className="block lg:hidden text-gray-700 dark:text-gray-300 hover:text-primary"
+      aria-label={isOpen ? 'Close menu' : 'Open menu'}
     >
-      <RiMenuLine size={24} />
+      {isOpen ? <RiCloseLine size={24} /> : <RiMenuLine size={24} />}
     </button>
   );
 }

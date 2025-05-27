@@ -5,7 +5,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { Role } from '@/utils/getUserRole';
-import { isLoggedIn, hasAnyRole } from '@/lib/auth';
 
 interface ProtectedRouteProps {
   allowedRoles?: Role[];

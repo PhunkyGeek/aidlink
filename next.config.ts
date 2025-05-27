@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Set to true ONLY if you want to bypass TS errors on deploy
   },
+  images: {
+    domains: ['ipfs.io', 'ipfs.w3s.link'], // Add your IPFS or other image domains
+  },
 };
 
 export default nextConfig;

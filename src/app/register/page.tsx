@@ -1,7 +1,6 @@
-// ✅ app/register/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
@@ -19,6 +18,9 @@ import {
   RiFacebookFill,
   RiFingerprintLine,
 } from 'react-icons/ri';
+import { useZkLoginHandler } from '@/hooks/useZkLoginHandler';
+import IconButton from '@/components/ui/IconButton';
+import { Spinner } from '@/components/ui/Spinner';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -28,14 +30,17 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<'donor' | 'recipient' | null>(null);
   const [showRolePrompt, setShowRolePrompt] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
   const { setAddress, setRole: setZustandRole, setProfile } = useUserStore();
+  const { zkLoading, handleZkLogin } = useZkLoginHandler();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!role) return setShowRolePrompt(true);
 
+    setLoading(true);
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName: name });
@@ -53,6 +58,8 @@ export default function RegisterPage() {
     } catch (err) {
       console.error(err);
       setError('Registration failed. Try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,6 +67,7 @@ export default function RegisterPage() {
     if (!role) return setShowRolePrompt(true);
     const selectedProvider = provider === 'google' ? googleProvider : facebookProvider;
 
+    setLoading(true);
     try {
       const result = await signInWithPopup(auth, selectedProvider);
       const uid = result.user.uid;
@@ -75,21 +83,27 @@ export default function RegisterPage() {
     } catch (err) {
       console.error(err);
       setError('OAuth failed. Try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 relative">
-      {/* Role Selector Modal */}
+      {/* Role Prompt Modal */}
       {showRolePrompt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl max-w-sm w-full space-y-4 text-center shadow-lg">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Select your role</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300">This helps us personalize your experience.</p>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+              Select your role
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              This helps us personalize your experience.
+            </p>
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => {
-                  setRole('donor');
+                  setRole("donor");
                   setShowRolePrompt(false);
                 }}
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
@@ -98,7 +112,7 @@ export default function RegisterPage() {
               </button>
               <button
                 onClick={() => {
-                  setRole('recipient');
+                  setRole("recipient");
                   setShowRolePrompt(false);
                 }}
                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
@@ -141,7 +155,7 @@ export default function RegisterPage() {
 
           <div className="relative">
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               required
               placeholder="Password"
               value={password}
@@ -158,48 +172,71 @@ export default function RegisterPage() {
           </div>
 
           <label className="text-sm text-gray-600 dark:text-gray-300 flex items-start space-x-2">
-            <input type="checkbox" className="mt-1 accent-purple-600" required />
-            <span>I agree to <Link href="#" className="text-purple-600 underline">privacy policy & terms</Link></span>
+            <input
+              type="checkbox"
+              className="mt-1 accent-purple-600"
+              required
+            />
+            <span>
+              I agree to{" "}
+              <Link href="#" className="text-purple-600 underline">
+                privacy policy & terms
+              </Link>
+            </span>
           </label>
 
           <button
             type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded-md transition"
+            disabled={loading}
+            className={`w-full font-medium py-2 rounded-md transition ${
+              loading
+                ? "bg-purple-400 text-white opacity-70 cursor-not-allowed"
+                : "bg-purple-600 hover:bg-purple-700 text-white"
+            }`}
           >
-            Sign Up
+            {loading ? "Registering..." : "Register"}
           </button>
 
           {error && <p className="text-red-600 text-sm text-center">{error}</p>}
         </form>
 
         <div className="text-center mt-4 text-sm text-gray-600 dark:text-gray-300">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <Link href="/login" className="text-purple-600 hover:underline">
-            Sign in instead
+            Sign in
           </Link>
         </div>
 
-        <div className="my-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-400">Or</div>
+        <div className="my-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-400">
+          or
+        </div>
 
         <div className="flex justify-center gap-4">
-          <button
-            onClick={() => handleOAuth('google')}
-            className="p-2 rounded border hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <RiGoogleFill size={24} />
-          </button>
-          <button
-            onClick={() => handleOAuth('facebook')}
-            className="p-2 rounded border hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <RiFacebookFill size={24} />
-          </button>
-          <button
-            onClick={() => alert('ZK login coming soon')}
-            className="p-2 rounded border hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <RiFingerprintLine size={24} />
-          </button>
+          {loading ? (
+            <Spinner />
+          ) : (
+            <>
+              <IconButton
+                onClick={() => handleOAuth("google")}
+                ariaLabel="Register with Google"
+              >
+                <RiGoogleFill size={20} className="text-red-500" />
+              </IconButton>
+              <IconButton
+                onClick={() => handleOAuth("facebook")}
+                ariaLabel="Register with Facebook"
+              >
+                <RiFacebookFill size={20} className="text-blue-600" />
+              </IconButton>
+              <IconButton
+                onClick={() => handleZkLogin(role)}
+                ariaLabel="zkLogin with Fingerprint"
+                disabled={zkLoading}
+              >
+                <RiFingerprintLine size={20} className="text-purple-500" />
+              </IconButton>
+            </>
+          )}
         </div>
       </div>
     </div>

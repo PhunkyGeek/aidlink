@@ -10,12 +10,11 @@ import {
 } from '@mysten/dapp-kit';
 import { getClient } from '@/utils/w3up-client';
 import { FaMapMarkerAlt, FaFileUpload, FaHeading, FaRegEdit, FaLayerGroup, FaDollarSign, FaHandHoldingHeart } from 'react-icons/fa';
-import toast from 'react-hot-toast';
 import Image from "next/image";
 
 export default function SubmitAidPage() {
   const router = useRouter();
-  const currentAccount = useCurrentAccount();
+  // const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
   const [title, setTitle] = useState('');

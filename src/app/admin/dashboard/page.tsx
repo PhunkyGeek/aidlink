@@ -12,10 +12,11 @@ import {
   RiFileList3Line,
   RiArrowUpDownLine,
 } from 'react-icons/ri';
+import { AidRequest } from '../../../../types/aid-request';
 
 function AdminDashboardPage() {
   const [stats, setStats] = useState({ users: 0, donors: 0, validators: 0, requests: 0 });
-  const [recentRequests, setRecentRequests] = useState<any[]>([]);
+  const [recentRequests, setRecentRequests] = useState<AidRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -33,15 +34,6 @@ function AdminDashboardPage() {
         if (role === 'donor') donors++;
         if (role === 'validator') validators++;
       });
-
-      type AidRequest = {
-        id: string;
-        requesterName?: string;
-        location?: string;
-        status?: string;
-        fundedAmount?: number;
-        createdAt?: { seconds: number; nanoseconds: number };
-      };
       
       const requests: AidRequest[] = requestsSnap.docs.map((doc) => ({
         id: doc.id,
@@ -75,25 +67,51 @@ function AdminDashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Welcome back, Admin 👋</h1>
-      <p className="text-sm text-gray-600 dark:text-gray-300">Your platform is growing fast. Keep it up!</p>
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+        Welcome back, Admin 👋
+      </h1>
+      <p className="text-sm text-gray-600 dark:text-gray-300">
+        Your platform is growing fast. Keep it up!
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Users" value={stats.users} color="bg-blue-100 text-blue-700" icon={<RiUser3Line />} />
-        <StatCard title="Donors" value={stats.donors} color="bg-green-100 text-green-700" icon={<RiHandCoinLine />} />
-        <StatCard title="Validators" value={stats.validators} color="bg-yellow-100 text-yellow-700" icon={<RiShieldUserLine />} />
-        <StatCard title="Requests" value={stats.requests} color="bg-purple-100 text-purple-700" icon={<RiFileList3Line />} />
+        <StatCard
+          title="Users"
+          value={stats.users}
+          color="bg-blue-100 text-blue-700"
+          icon={<RiUser3Line />}
+        />
+        <StatCard
+          title="Donors"
+          value={stats.donors}
+          color="bg-green-100 text-green-700"
+          icon={<RiHandCoinLine />}
+        />
+        <StatCard
+          title="Validators"
+          value={stats.validators}
+          color="bg-yellow-100 text-yellow-700"
+          icon={<RiShieldUserLine />}
+        />
+        <StatCard
+          title="Requests"
+          value={stats.requests}
+          color="bg-purple-100 text-purple-700"
+          icon={<RiFileList3Line />}
+        />
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Recent Aid Requests</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+            Recent Aid Requests
+          </h2>
           <button
             onClick={() => setSortAsc((prev) => !prev)}
             className="flex items-center gap-1 text-sm text-purple-600 hover:text-purple-800"
           >
             <RiArrowUpDownLine />
-            Sort by Date ({sortAsc ? 'Asc' : 'Desc'})
+            Sort by Date ({sortAsc ? "Asc" : "Desc"})
           </button>
         </div>
         <table className="w-full text-sm">
@@ -108,12 +126,23 @@ function AdminDashboardPage() {
           </thead>
           <tbody>
             {recentRequests.map((req) => (
-              <tr key={req.id} className="border-b border-gray-200 dark:border-gray-700">
-                <td className="py-2">{req.requesterName || 'Unknown'}</td>
-                <td className="py-2">{new Date(req.createdAt?.seconds * 1000).toLocaleDateString()}</td>
-                <td className="py-2">{req.location || 'N/A'}</td>
+              <tr
+                key={req.id}
+                className="border-b border-gray-200 dark:border-gray-700"
+              >
+                <td className="py-2">{req.requesterName || "Unknown"}</td>
+                <td className="py-2">
+                  {req.createdAt?.seconds
+                    ? new Date(
+                        req.createdAt.seconds * 1000
+                      ).toLocaleDateString()
+                    : "N/A"}
+                </td>
+                <td className="py-2">{req.location || "N/A"}</td>
                 <td className="py-2 capitalize">{req.status}</td>
-                <td className="py-2">{req.status === 'Funded' ? `$${req.fundedAmount}` : 'N/A'}</td>
+                <td className="py-2">
+                  {req.status === "Funded" ? `$${req.fundedAmount}` : "N/A"}
+                </td>
               </tr>
             ))}
           </tbody>

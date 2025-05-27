@@ -5,21 +5,29 @@ import {
   useCurrentAccount,
   useSuiClientQuery,
 } from '@mysten/dapp-kit';
-import Image from 'next/image';
-import Link from 'next/link';
+import type { VaultCardProps as VaultCardData } from '@/components/VaultCard';
+import VaultCard from '@/components/VaultCard';
 
-interface VaultCard {
-  id: string;
-  title: string;
-  recipient: string;
-  amount: string;
-  requestId: string;
-  mediaUrl?: string;
+// Type for a raw on-chain object
+interface SuiObjectData {
+  data?: {
+    objectId: string;
+    type: string;
+    content: {
+      fields: {
+        title: string;
+        recipient: string;
+        amount: string;
+        request_id: string;
+        media_cid?: string;
+      };
+    };
+  };
 }
 
 export default function DonationsPage() {
   const account = useCurrentAccount();
-  const [vaults, setVaults] = useState<VaultCard[]>([]);
+  const [vaults, setVaults] = useState<VaultCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,18 +41,18 @@ export default function DonationsPage() {
       try {
         if (!data?.data) return;
 
-        const filteredVaults = data.data.filter((obj: any) =>
-          obj.data?.type.includes('aid_vault::AidVault')
+        const filteredVaults = (data.data as SuiObjectData[]).filter(
+          (obj) => obj.data?.type.includes('aid_vault::AidVault')
         );
 
-        const formatted: VaultCard[] = filteredVaults.map((vault: any) => {
-          const fields = vault.data.content.fields;
-          const mediaUrl = fields?.media_cid
+        const formatted: VaultCardData[] = filteredVaults.map((vault) => {
+          const fields = vault.data!.content.fields;
+          const mediaUrl = fields.media_cid
             ? `https://${fields.media_cid}.ipfs.w3s.link`
             : '';
 
           return {
-            id: vault.data.objectId,
+            id: vault.data!.objectId,
             title: fields.title,
             recipient: fields.recipient,
             amount: fields.amount,
@@ -78,33 +86,7 @@ export default function DonationsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {vaults.map((vault) => (
-            <div
-              key={vault.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-lg transition-all duration-300 flex flex-col"
-            >
-              {vault.mediaUrl && (
-                <Image
-                  src={vault.mediaUrl}
-                  alt="Donation media"
-                  width={400}
-                  height={250}
-                  className="rounded mb-3 object-cover"
-                />
-              )}
-              <h2 className="text-xl font-semibold mb-1">{vault.title}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-                🎯 Recipient: {vault.recipient}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                💰 Amount Donated: {vault.amount}
-              </p>
-              <Link
-                href={`/fund/${vault.requestId}`}
-                className="mt-auto inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-center"
-              >
-                View Aid Request
-              </Link>
-            </div>
+            <VaultCard key={vault.id} {...vault} />
           ))}
         </div>
       )}

@@ -3,20 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle, History, PlusCircle, LayoutDashboard } from 'lucide-react';
-import Image from 'next/image';
 
 export default function SuccessScreen() {
   const router = useRouter();
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      {/* <Image
-        src="/aid-request-bg.png"
-        alt="Success Background"
-        fill
-        priority
-        className="absolute object-cover z-0"
-      /> */}
 
       <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <motion.div

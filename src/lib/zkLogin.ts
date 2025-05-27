@@ -1,5 +1,5 @@
 // ✅ lib/zkLogin.ts
-import { jwtToAddress } from '@mysten/zklogin';
+import { jwtToAddress } from '@mysten/sui/zklogin';
 import { useUserStore } from '@/store/useUserStore';
 import { getUserRole, Role } from '@/utils/getUserRole';
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { RiAddFill, RiHandHeartLine, RiSearchLine, RiWallet3Fill } from 'react-icons/ri';
+import { RiAddFill, RiHandHeartLine, RiSearchLine } from 'react-icons/ri';
 
 const navItems = [
   { name: 'All Requests', href: '/requests', icon: <RiSearchLine className="text-xl" /> },
@@ -13,7 +13,7 @@ export default function DonorSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-black dark:black border-r border-black dark:black p-4">
+    <aside className="w-64 bg-black border-r-2 border-black p-4">
       {/* <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Donor Panel</h2> */}
 
       {/* Connect Button */}

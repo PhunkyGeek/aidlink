@@ -4,6 +4,13 @@ import toast from 'react-hot-toast';
 
 export type Role = 'admin' | 'validator' | 'donor' | 'recipient';
 
+export type UserRole = {
+  id: string;
+  role: Role;
+  createdManually?: boolean;
+};
+
+
 export async function getUserRole(address: string): Promise<Role> {
   const docRef = doc(db, 'userRoles', address);
   const snapshot = await getDoc(docRef);

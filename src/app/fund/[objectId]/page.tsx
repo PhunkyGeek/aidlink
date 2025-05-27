@@ -1,20 +1,15 @@
-// ✅ app/fund/[objectId]/page.tsx (updated and complete)
+// app/fund/[objectId]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  useCurrentAccount,
-  useSignAndExecuteTransaction,
-} from '@mysten/dapp-kit';
-import {
-  SuiClient,
-  getFullnodeUrl,
-  type SuiObjectResponse,
-} from '@mysten/sui/client';
+import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
+import { useState } from 'react';
+import { useAidRequest } from '@/hooks/useAidRequest';
+import AidRequestDetails from '@/components/AidRequestDetails';
+import SkeletonAidRequest from '@/components/SkeletonAidRequest';
 
-const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+const PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID!;
 
 export default function FundRequestPage() {
   const { objectId } = useParams();
@@ -22,30 +17,9 @@ export default function FundRequestPage() {
   const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
-  const [objectData, setObjectData] = useState<SuiObjectResponse | null>(null);
+  const { request, loading } = useAidRequest(objectId as string);
   const [amount, setAmount] = useState('');
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    async function fetchObject() {
-      if (!objectId) return;
-
-      try {
-        const data = await client.getObject({
-          id: objectId as string,
-          options: { showContent: true },
-        });
-        setObjectData(data);
-      } catch (error) {
-        console.error('Error fetching object:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchObject();
-  }, [objectId]);
 
   const handleFund = async () => {
     if (!currentAccount || !objectId || !amount) return;
@@ -56,74 +30,49 @@ export default function FundRequestPage() {
       return;
     }
 
-    const fields = (objectData?.data?.content as any)?.fields;
-    if (!fields?.title) {
+    if (!request?.title) {
       alert('Unable to retrieve aid request details.');
       return;
     }
 
     setSubmitting(true);
-    try {
-      const tx = new Transaction();
-      tx.moveCall({
-        target: '0x<YOUR_PACKAGE_ID>::aid_vault::fund_request',
-        arguments: [tx.object(objectId as string), tx.pure.u64(donationAmount)],
-      });
 
-      signAndExecuteTransaction(
-        { transaction: tx, chain: 'sui:testnet' },
-        {
-          onSuccess: () => {
-            router.push(
-              `/fund/success?amount=${donationAmount}&title=${encodeURIComponent(
-                fields.title
-              )}`
-            );
-          },
-          onError: () => {
-            alert('Funding failed!');
-          },
-          onSettled: () => setSubmitting(false),
-        }
-      );
-    } catch (err) {
-      console.error('Funding error:', err);
-      alert('An error occurred during funding.');
-      setSubmitting(false);
-    }
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${PACKAGE_ID}::aid_vault::fund_request`,
+      arguments: [tx.object(objectId as string), tx.pure.u64(donationAmount)],
+    });
+
+    signAndExecuteTransaction(
+      { transaction: tx, chain: 'sui:testnet' },
+      {
+        onSuccess: () => {
+          router.push(
+            `/fund/success?amount=${donationAmount}&title=${encodeURIComponent(
+              request.title
+            )}`
+          );
+        },
+        onError: () => alert('Funding failed!'),
+        onSettled: () => setSubmitting(false),
+      }
+    );
   };
 
-  if (loading) return <p className="text-center">Loading request...</p>;
-
-  const content = objectData?.data?.content;
-  if (!content || content.dataType !== 'moveObject') {
+  if (loading) {
     return (
-      <p className="text-center text-red-600">
-        Invalid or unsupported object type.
-      </p>
+      <div className="max-w-2xl mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-4">Fund Aid Request</h1>
+        <SkeletonAidRequest />
+      </div>
     );
   }
-
-  const fields = (content as any).fields;
-  const mediaUrl = fields.media_cid
-    ? `https://${fields.media_cid}.ipfs.w3s.link`
-    : null;
+  if (!request) return <p className="text-center text-red-600">Request not found.</p>;
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-4">Fund Aid Request</h1>
-      <p className="text-lg font-semibold mb-1">{fields.title}</p>
-      <p className="text-sm text-gray-600 mb-2">
-        📍 {fields.location} | 🏷️ {fields.category}
-      </p>
-      {mediaUrl && (
-        <img
-          src={mediaUrl}
-          alt="Media"
-          className="w-full h-64 object-cover rounded mb-3"
-        />
-      )}
-      <p className="text-gray-700 mb-4 whitespace-pre-wrap">{fields.description}</p>
+      <AidRequestDetails request={request} />
 
       <label className="block text-sm font-medium text-gray-700 mb-1">
         Amount (SUI)
@@ -143,9 +92,11 @@ export default function FundRequestPage() {
       <button
         onClick={handleFund}
         disabled={submitting}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60"
+        className={`w-full bg-purple-600 text-white py-2 px-4 rounded ${
+          submitting ? "opacity-50 cursor-not-allowed" : "hover:bg-purple-700"
+        }`}
       >
-        {submitting ? 'Processing...' : 'Fund Now'}
+        {submitting ? "Processing..." : "Fund Now"}
       </button>
     </div>
   );

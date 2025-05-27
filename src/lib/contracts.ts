@@ -1,4 +1,3 @@
-// ✅ lib/contract.ts (reverted to call-based format, compatible with SuiClient)
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 
 const client = new SuiClient({
@@ -8,6 +7,16 @@ const client = new SuiClient({
 });
 
 const PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID!;
+
+// Type for sui_moveCall arguments, as an array
+type MoveCallArgs = [
+  packageObjectId: string,
+  module: string,
+  function: string,
+  typeArguments: string[], // Empty for these functions
+  arguments: (string | number)[],
+  gasBudget: number
+];
 
 export async function submitAidRequest({
   title,
@@ -24,14 +33,20 @@ export async function submitAidRequest({
   category: number;
   walletAddress: string;
 }) {
-  return await client.call('sui_moveCall', {
-    packageObjectId: PACKAGE_ID,
-    module: 'aid_request',
-    function: 'create_request',
-    arguments: [title, description, media_cid, location, category.toString()],
-    sender: walletAddress,
-    gasBudget: 10000,
-  } as any);
+  const args: MoveCallArgs = [
+    PACKAGE_ID,
+    'aid_request',
+    'create_request',
+    [], // No type arguments
+    [title, description, media_cid, location, walletAddress, category.toString()],
+    10000,
+  ];
+  try {
+    return await client.call('sui_moveCall', args);
+  } catch (error: any) {
+    console.error('Failed to submit aid request:', error);
+    throw new Error(error.message || 'Failed to submit aid request');
+  }
 }
 
 export async function fundAid({
@@ -43,31 +58,42 @@ export async function fundAid({
   amount: number;
   walletAddress: string;
 }) {
-  return await client.call('sui_moveCall', {
-    packageObjectId: PACKAGE_ID,
-    module: 'aid_vault',
-    function: 'fund_request',
-    arguments: [aidId, amount.toString()],
-    sender: walletAddress,
-    gasBudget: 10000,
-  } as any);
+  const args: MoveCallArgs = [
+    PACKAGE_ID,
+    'aid_vault',
+    'fund_request',
+    [], // No type arguments
+    [aidId, amount.toString()],
+    10000,
+  ];
+  try {
+    return await client.call('sui_moveCall', args);
+  } catch (error: any) {
+    console.error('Failed to fund aid:', error);
+    throw new Error(error.message || 'Failed to fund aid');
+  }
 }
 
 export async function approveAidRequest({
   aidId,
-  walletAddress,
 }: {
   aidId: string;
   walletAddress: string;
 }) {
-  return await client.call('sui_moveCall', {
-    packageObjectId: PACKAGE_ID,
-    module: 'aid_request',
-    function: 'mark_approved',
-    arguments: [aidId],
-    sender: walletAddress,
-    gasBudget: 10000,
-  } as any);
+  const args: MoveCallArgs = [
+    PACKAGE_ID,
+    'aid_request',
+    'mark_approved',
+    [], // No type arguments
+    [aidId],
+    10000,
+  ];
+  try {
+    return await client.call('sui_moveCall', args);
+  } catch (error: any) {
+    console.error('Failed to approve aid request:', error);
+    throw new Error(error.message || 'Failed to approve aid request');
+  }
 }
 
 export async function rejectAidRequest({
@@ -77,12 +103,18 @@ export async function rejectAidRequest({
   aidId: string;
   walletAddress: string;
 }) {
-  return await client.call('sui_moveCall', {
-    packageObjectId: PACKAGE_ID,
-    module: 'aid_request',
-    function: 'mark_rejected',
-    arguments: [aidId],
-    sender: walletAddress,
-    gasBudget: 10000,
-  } as any);
+  const args: MoveCallArgs = [
+    PACKAGE_ID,
+    'aid_request',
+    'mark_rejected',
+    [], // No type arguments
+    [aidId],
+    10000,
+  ];
+  try {
+    return await client.call('sui_moveCall', args);
+  } catch (error: any) {
+    console.error('Failed to reject aid request:', error);
+    throw new Error(error.message || 'Failed to reject aid request');
+  }
 }

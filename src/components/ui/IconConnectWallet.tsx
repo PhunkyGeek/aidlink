@@ -1,7 +1,7 @@
 'use client';
 
 import { useConnectWallet, useWallets } from '@mysten/dapp-kit';
-import { RiThunderstormsFill, RiThunderstormsLine } from 'react-icons/ri';
+import { RiThunderstormsFill } from 'react-icons/ri';
 
 export function IconConnectWallet() {
   const wallets = useWallets(); // Get available wallets

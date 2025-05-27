@@ -7,8 +7,13 @@ import RecipientSidebar from './RecipientSidebar';
 import DonorSidebar from './DonorSidebar';
 import Image from 'next/image';
 
+
+
 export default function Sidebar() {
-  const { role } = useUserStore();
+  const { role, address } = useUserStore();
+
+  // Hide sidebar if not signed in
+  if (!address) return null;
 
   const renderSidebarContent = () => {
     switch (role) {

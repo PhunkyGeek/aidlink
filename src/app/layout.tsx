@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar/Sidebar";
 import Navbar from "@/components/Navbar/Navbar";
 import "./globals.css";
@@ -10,6 +10,7 @@ import AppProviders from "@/providers/AppProviders";
 import { createNetworkConfig, SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { getFullnodeUrl } from "@mysten/sui/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useUserStore } from "@/store/useUserStore";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -27,8 +28,19 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { address } = useUserStore();
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile
   const [showSidebar, setShowSidebar] = useState(true); // desktop
+
+  useEffect(() => {
+    if (address) {
+      setShowSidebar(true);
+    } else {
+      setShowSidebar(false);
+      setSidebarOpen(false); // also close mobile sidebar
+    }
+  }, [address]);
+  
 
   return (
     <html lang="en">

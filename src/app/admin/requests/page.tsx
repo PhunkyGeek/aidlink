@@ -12,9 +12,11 @@ import {
 } from 'firebase/firestore';
 import { withRole } from '@/lib/withRole';
 import { withAuth } from '@/lib/withAuth';
+import { AidRequest } from '../../../../types/aid-request';
 
 function RequestsPage() {
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<AidRequest[]>([]);
+
 
   useEffect(() => {
     fetchRequests();
@@ -40,10 +42,14 @@ function RequestsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">All Aid Requests</h1>
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+        All Aid Requests
+      </h1>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Manage Requests</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+          Manage Requests
+        </h2>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-600 dark:text-gray-300 border-b">
@@ -57,12 +63,19 @@ function RequestsPage() {
           </thead>
           <tbody>
             {requests.map((r) => (
-              <tr key={r.id} className="border-b border-gray-200 dark:border-gray-700">
-                <td className="py-2">{r.requesterName || 'Unknown'}</td>
-                <td className="py-2">{new Date(r.createdAt?.seconds * 1000).toLocaleDateString()}</td>
-                <td className="py-2">{r.location || 'N/A'}</td>
+              <tr
+                key={r.id}
+                className="border-b border-gray-200 dark:border-gray-700"
+              >
+                <td className="py-2">{r.requesterName || "Unknown"}</td>
+                <td className="py-2">
+                  {r.createdAt?.seconds
+                    ? new Date(r.createdAt.seconds * 1000).toLocaleDateString()
+                    : "N/A"}
+                </td>
+                <td className="py-2">{r.location || "N/A"}</td>
                 <td className="py-2 capitalize">{r.status}</td>
-                <td className="py-2">{r.flagged ? 'Yes' : 'No'}</td>
+                <td className="py-2">{r.flagged ? "Yes" : "No"}</td>
                 <td className="py-2 space-x-2">
                   <button
                     onClick={() => flagRequest(r.id)}

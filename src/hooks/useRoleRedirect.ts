@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import toast from 'react-hot-toast';
@@ -7,9 +7,12 @@ import toast from 'react-hot-toast';
 export function useRoleRedirect() {
   const { role } = useUserStore();
   const router = useRouter();
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
-    if (!role) return;
+    if (!role || hasRedirected.current) return;
+
+    hasRedirected.current = true; // prevent future executions
 
     const routeMap: Record<string, string> = {
       admin: '/admin/dashboard',

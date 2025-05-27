@@ -2,7 +2,6 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ModalProps {

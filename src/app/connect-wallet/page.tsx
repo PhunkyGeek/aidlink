@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { useSuiClientQuery } from '@mysten/dapp-kit';
 import { useCurrentAccount } from '@mysten/dapp-kit';
-import { useUserStore } from '@/store/useUserStore';
 import {
   RiExchangeLine,
   RiHistoryLine,
@@ -219,15 +218,14 @@ export default function ConnectWalletPage() {
                       1
                     </span>
                     <p>
-                      Choose the request you want to fund and the cryptocurrency
-                      you want to use, enter the amount, then select "review"
+                      {"Choose the request you want to fund and the cryptocurrency you want to use, enter the amount, then select 'review'"}
                     </p>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm flex-shrink-0">
                       2
                     </span>
-                    <p>Send the required amount to the provider's address</p>
+                    <p>{"Send the desired amount to the recipients's address"}</p>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm flex-shrink-0">

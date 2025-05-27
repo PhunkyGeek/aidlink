@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getStatusLabel } from '@/utils/statusMap';
 import Link from 'next/link';
 import Image from 'next/image';
-import SearchBar from '@/components/Navbar/SearchBar';
-import { RiFileSearchFill, RiSearch2Fill, RiSearchFill, RiSearchLine, RiWallet3Fill } from 'react-icons/ri';
+import { RiSearchLine } from 'react-icons/ri';
+import { AidRequest } from '../../../types/aid-request';
 
-// Replace this with your actual fetch function
+// Replace this with actual fetch function
 async function fetchAidRequests() {
   const res = await fetch('/api/requests'); // update if using Sui query
   if (!res.ok) throw new Error('Failed to fetch aid requests');
@@ -16,22 +16,23 @@ async function fetchAidRequests() {
 }
 
 export default function AidRequestPage() {
-  const { data: requests = [], isLoading, isError, error } = useQuery({
+  const { data: requests = [], isLoading, isError, error } = useQuery<AidRequest[]>({
     queryKey: ['aid-requests'],
     queryFn: fetchAidRequests,
   });
+  
 
   const [search, setSearch] = useState('');
 
-  const filteredRequests = requests.filter((req: any) => {
-    const fields = req.data?.content?.fields || {};
+  const filteredRequests = requests.filter((req) => {
     const query = search.toLowerCase();
     return (
-      fields.title?.toLowerCase().includes(query) ||
-      fields.location?.toLowerCase().includes(query) ||
-      fields.category?.toLowerCase().includes(query)
+      req.title?.toLowerCase().includes(query) ||
+      req.location?.toLowerCase().includes(query) ||
+      req.category?.toLowerCase().includes(query)
     );
   });
+  
 
   return (
     <div className="min-h-screen px-4 py-10 bg-gray-50 dark:bg-[#0c0c0c]">
@@ -59,11 +60,10 @@ export default function AidRequestPage() {
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredRequests.map((req: any, index: number) => {
-            const fields = req.data?.content?.fields || {};
-            const cid = fields.media_cid;
+          {filteredRequests.map((req: AidRequest, index: number) => {
+            const cid = req.mediaCid;
             const mediaUrl = cid ? `https://${cid}.ipfs.w3s.link` : null;
-            const status = fields.status;
+            const status = req.status;
 
             return (
               <div
@@ -74,27 +74,33 @@ export default function AidRequestPage() {
                   <Image
                     src={mediaUrl}
                     alt="Aid Media"
-                    width={400}
-                    height={250}
-                    className="rounded mb-3 object-cover"
+                    fill
+                    className="rounded object-cover"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    priority
                   />
                 )}
                 <h2 className="text-xl font-semibold mb-1 text-gray-900 dark:text-white">
-                  {fields.title}
+                  {req.title}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  📍 {fields.location} • 🏷️ {fields.category}
+                  📍 {req.location} • 🏷️ {req.category}
                 </p>
                 <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
-                  Status: {getStatusLabel(status)}
+                  Status:{" "}
+                  {status !== undefined
+                    ? getStatusLabel(Number(status))
+                    : "Unknown"}
                 </p>
                 <p className="text-gray-700 dark:text-gray-300 mb-4">
-                  {fields.description?.length > 100
-                    ? fields.description.slice(0, 100) + '...'
-                    : fields.description}
+                  {req.description
+                    ? req.description.length > 100
+                      ? req.description.slice(0, 100) + "..."
+                      : req.description
+                    : "No description provided."}
                 </p>
                 <Link
-                  href={`/fund/${req.data.objectId}`}
+                  href={`/fund/${req.id}`}
                   className="mt-auto inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
                   Fund Request

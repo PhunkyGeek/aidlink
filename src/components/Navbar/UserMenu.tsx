@@ -2,27 +2,30 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { logout } from '@/lib/auth';
 import { RiLogoutBoxRLine, RiUser3Line, RiSettings4Line, RiMoneyDollarCircleLine, RiQuestionLine } from 'react-icons/ri';
 
-type Props = {
+interface Props {
   address: string | null;
   role: string | null;
   name?: string | null;
-  imageUrl?: string | null;
-};
+  photoURL?: string | null;
+}
 
-export default function UserMenu({ address, role, name, imageUrl }: Props) {
+export default function UserMenu({ address, role, name, photoURL }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const displayIcon = () => {
-    if (imageUrl) {
+    if (photoURL) {
       return (
-        <img
-          src={imageUrl}
+        <Image
+          src={photoURL}
           alt="Profile"
+          width={32}
+          height={32}
           className="w-8 h-8 rounded-full object-cover border border-white"
         />
       );
@@ -104,7 +107,13 @@ export default function UserMenu({ address, role, name, imageUrl }: Props) {
   );
 }
 
-function MenuItem({ icon, text, onClick }: { icon: React.ReactNode; text: string; onClick: () => void }) {
+interface MenuItemProps {
+  icon: React.ReactNode;
+  text: string;
+  onClick: () => void;
+}
+
+function MenuItem({ icon, text, onClick }: MenuItemProps) {
   return (
     <button
       onClick={onClick}

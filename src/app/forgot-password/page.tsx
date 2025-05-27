@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
@@ -10,7 +9,6 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +28,7 @@ export default function ForgotPasswordPage() {
           Forgot Password 🔒
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Enter your email and we'll send you instructions to reset your password
+          {"Enter your email and we'll send you instructions to reset your password"}
         </p>
 
         {sent ? (

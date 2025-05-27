@@ -23,11 +23,11 @@ export function logout() {
 } 
 
 // Optional: add helper for redirecting based on role
-export function getDashboardRoute(role: Role): string {
-  switch (role) {
-    case 'validator': return '/validator-dashboard';
-    case 'admin': return '/admin';
-    case 'recipient': return '/submit-aid';
-    default: return '/requests';
-  }
-}
+// export function getDashboardRoute(role: Role): string {
+//   switch (role) {
+//     case 'validator': return '/validator-dashboard';
+//     case 'admin': return '/admin';
+//     case 'recipient': return '/submit-aid';
+//     default: return '/requests';
+//   }
+// }
