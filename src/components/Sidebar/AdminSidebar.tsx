@@ -6,18 +6,18 @@ import { usePathname } from 'next/navigation';
 import { RiDashboardLine, RiTeamLine, RiShieldUserLine, RiFileListLine } from 'react-icons/ri';
 
 const navItems = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: <RiDashboardLine /> },
-  { name: 'Users', href: '/admin/users', icon: <RiTeamLine /> },
-  { name: 'Validators', href: '/admin/validators', icon: <RiShieldUserLine /> },
-  { name: 'Requests', href: '/admin/requests', icon: <RiFileListLine /> },
+  { name: 'Dashboard', href: '/admin/dashboard', icon: <RiDashboardLine  className="text-xl" /> },
+  { name: 'Users', href: '/admin/users', icon: <RiTeamLine  className="text-xl" /> },
+  { name: 'Validators', href: '/admin/validators', icon: <RiShieldUserLine  className="text-xl" /> },
+  { name: 'Requests', href: '/admin/requests', icon: <RiFileListLine  className="text-xl" /> },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
-      <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Admin Panel</h2>
+    <aside className="w-64 bg-white dark:bg-black border-r border-gray-200 dark:border-black p-4">
+      <h2 className="text-lg font-bold text-gray-800 dark:text-purple-600 mt-6 mb-6">ADMINISTRATOR</h2>
       <nav className="flex flex-col gap-2">
         {navItems.map((item) => (
           <Link

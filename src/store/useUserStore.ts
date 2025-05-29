@@ -17,30 +17,42 @@ export interface UserState {
   clearUser: () => void;
 }
 
-// Custom storage with error handling, typed as StateStorage
+// Check for browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Custom storage with error handling and SSR safety
 const storage: StateStorage = {
   getItem: (name: string): string | null => {
+    if (!isBrowser) return null; // Skip on server
     try {
-      return localStorage.getItem(name);
+      return localStorage.getItem(name) ?? null;
     } catch (error) {
-      toast.error('Failed to load user data from storage');
-      console.error('Storage getItem error:', error);
+      if (isBrowser) {
+        toast.error('Failed to load user data from storage');
+        console.error('Storage getItem error:', error);
+      }
       return null;
     }
   },
   setItem: (name: string, value: string): void => {
+    if (!isBrowser) return; // Skip on server
     try {
       localStorage.setItem(name, value);
     } catch (error) {
-      toast.error('Failed to save user data to storage');
-      console.error('Storage setItem error:', error);
+      if (isBrowser) {
+        toast.error('Failed to save user data to storage');
+        console.error('Storage setItem error:', error);
+      }
     }
   },
   removeItem: (name: string): void => {
+    if (!isBrowser) return; // Skip on server
     try {
       localStorage.removeItem(name);
     } catch (error) {
-      console.error('Storage removeItem error:', error);
+      if (isBrowser) {
+        console.error('Storage removeItem error:', error);
+      }
     }
   },
 };
@@ -79,7 +91,8 @@ export const useUserStore = create<UserState>()(
         displayName: state.displayName,
         photoURL: state.photoURL,
       }),
-      version: 1, // Support future schema migrations
+      version: 1,
+      skipHydration: !isBrowser, // Skip hydration on server
     }
   )
 );

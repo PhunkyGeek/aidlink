@@ -13,7 +13,7 @@ interface SpinnerProps {
   
     return (
       <div
-        className={`animate-spin rounded-full border-2 border-current border-t-transparent ${sizeClasses[size]} ${className || ''}`}
+        className={`animate-spin rounded-full border-2 border-current border-t-purple-700 ${sizeClasses[size]} ${className || ''}`}
         role="status"
       >
         <span className="sr-only">Loading...</span>

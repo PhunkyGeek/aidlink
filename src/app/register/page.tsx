@@ -7,7 +7,7 @@ import {
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
-import { auth, googleProvider, facebookProvider } from '@/lib/firebase';
+import { auth, googleAuthProvider, facebookAuthProvider } from '@/lib/firebase';
 import { useUserStore } from '@/store/useUserStore';
 import { setUserRole } from '@/utils/getUserRole';
 import Link from 'next/link';
@@ -21,6 +21,9 @@ import {
 import { useZkLoginHandler } from '@/hooks/useZkLoginHandler';
 import IconButton from '@/components/ui/IconButton';
 import { Spinner } from '@/components/ui/Spinner';
+import FormInput from '@/components/ui/FormInput';
+import toast from 'react-hot-toast';
+import Loader from '@/components/Loader';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -31,6 +34,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<'donor' | 'recipient' | null>(null);
   const [showRolePrompt, setShowRolePrompt] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
 
   const router = useRouter();
   const { setAddress, setRole: setZustandRole, setProfile } = useUserStore();
@@ -39,6 +43,12 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!role) return setShowRolePrompt(true);
+
+    if (!auth) {
+      setError('Authentication service unavailable');
+      toast.error('Authentication service unavailable');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -54,10 +64,14 @@ export default function RegisterPage() {
       setProfile(displayName, photoURL);
       await setUserRole(uid, role);
 
+      toast.success('Registration successful');
+      setShowLoader(true); // Show loader after successful registration
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
       router.push('/redirect');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Registration failed. Try again.');
+      setError('Registration failed: ' + (err.message || 'Unknown error'));
+      toast.error('Registration failed');
     } finally {
       setLoading(false);
     }
@@ -65,7 +79,18 @@ export default function RegisterPage() {
 
   const handleOAuth = async (provider: 'google' | 'facebook') => {
     if (!role) return setShowRolePrompt(true);
-    const selectedProvider = provider === 'google' ? googleProvider : facebookProvider;
+    if (!auth) {
+      setError('Authentication service unavailable');
+      toast.error('Authentication service unavailable');
+      return;
+    }
+
+    const selectedProvider = provider === 'google' ? googleAuthProvider : facebookAuthProvider;
+    if (!selectedProvider) {
+      setError('OAuth provider unavailable');
+      toast.error('OAuth provider unavailable');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -79,10 +104,14 @@ export default function RegisterPage() {
       setProfile(displayName, photoURL);
       await setUserRole(uid, role);
 
+      toast.success('OAuth registration successful');
+      setShowLoader(true); // Show loader after successful OAuth
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
       router.push('/redirect');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('OAuth failed. Try again.');
+      setError('OAuth failed: ' + (err.message || 'Unknown error'));
+      toast.error('OAuth failed');
     } finally {
       setLoading(false);
     }
@@ -90,7 +119,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 relative">
-      {/* Role Prompt Modal */}
+      {showLoader && <Loader />}
       {showRolePrompt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl max-w-sm w-full space-y-4 text-center shadow-lg">
@@ -103,7 +132,7 @@ export default function RegisterPage() {
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => {
-                  setRole("donor");
+                  setRole('donor');
                   setShowRolePrompt(false);
                 }}
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
@@ -112,7 +141,7 @@ export default function RegisterPage() {
               </button>
               <button
                 onClick={() => {
-                  setRole("recipient");
+                  setRole('recipient');
                   setShowRolePrompt(false);
                 }}
                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
@@ -135,32 +164,29 @@ export default function RegisterPage() {
         </div>
 
         <form className="space-y-4" onSubmit={handleRegister}>
-          <input
+          <FormInput
             type="text"
-            required
             placeholder="Username"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-black dark:text-white"
+            className="border-gray-700 bg-gray-900 text-gray-100 focus:border-purple-400 focus:ring-purple-400/20"
           />
 
-          <input
+          <FormInput
             type="email"
-            required
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-black dark:text-white"
+            className="border-gray-700 bg-gray-900 text-gray-100 focus:border-purple-400 focus:ring-purple-400/20"
           />
 
           <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              required
+            <FormInput
+              type={showPassword ? 'text' : 'password'}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 pr-10 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-black dark:text-white"
+              className="border-gray-700 bg-gray-900 text-gray-100 focus:border-purple-400 focus:ring-purple-400/20"
             />
             <button
               type="button"
@@ -178,7 +204,7 @@ export default function RegisterPage() {
               required
             />
             <span>
-              I agree to{" "}
+              I agree to{' '}
               <Link href="#" className="text-purple-600 underline">
                 privacy policy & terms
               </Link>
@@ -188,52 +214,52 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full font-medium py-2 rounded-md transition ${
-              loading
-                ? "bg-purple-400 text-white opacity-70 cursor-not-allowed"
-                : "bg-purple-600 hover:bg-purple-700 text-white"
-            }`}
+            className="w-full font-medium py-2 rounded-md transition bg-purple-600 hover:bg-purple-700 text-white"
           >
-            {loading ? "Registering..." : "Register"}
+            {loading ? 'Registering...' : 'Register'}
           </button>
 
           {error && <p className="text-red-600 text-sm text-center">{error}</p>}
         </form>
 
         <div className="text-center mt-4 text-sm text-gray-600 dark:text-gray-300">
-          Already have an account?{" "}
+          Already have an account?{' '}
           <Link href="/login" className="text-purple-600 hover:underline">
             Sign in
           </Link>
         </div>
 
-        <div className="my-4 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-400">
-          or
+        <div className="my-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center -mt-3">
+            <span className="bg-white dark:bg-black px-2 text-sm text-gray-400 dark:text-gray-300">
+              or
+            </span>
+          </div>
         </div>
 
         <div className="flex justify-center gap-4">
           {loading ? (
-            <Spinner />
+            <Spinner size="md" />
           ) : (
             <>
               <IconButton
-                onClick={() => handleOAuth("google")}
+                onClick={() => handleOAuth('google')}
                 ariaLabel="Register with Google"
               >
-                <RiGoogleFill size={20} className="text-red-500" />
+                <RiGoogleFill className="text-red-600" size={24} />
               </IconButton>
               <IconButton
-                onClick={() => handleOAuth("facebook")}
+                onClick={() => handleOAuth('facebook')}
                 ariaLabel="Register with Facebook"
               >
-                <RiFacebookFill size={20} className="text-blue-600" />
+                <RiFacebookFill className="text-blue-600" size={24} />
               </IconButton>
               <IconButton
                 onClick={() => handleZkLogin(role)}
-                ariaLabel="zkLogin with Fingerprint"
+                ariaLabel="Register with zkLogin"
                 disabled={zkLoading}
               >
-                <RiFingerprintLine size={20} className="text-purple-500" />
+                <RiFingerprintLine className="text-purple-500" size={24} />
               </IconButton>
             </>
           )}

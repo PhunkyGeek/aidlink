@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, Commands, BuildTransactionOptions, TransactionDataBuilder } from '@mysten/sui/transactions';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,32 @@ import { Spinner } from '@/components/ui/Spinner';
 import { AidRequest } from '../../../types/aid-request';
 
 const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+const PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID || '';
+
+// Simple object cache plugin for transaction building
+const objectCache = new Map<string, { objectId: string; version: string; digest: string }>();
+function objectCachePlugin(
+  transactionData: TransactionDataBuilder,
+  _options: BuildTransactionOptions,
+  next: () => Promise<void>,
+) {
+  for (const input of transactionData.inputs) {
+    if (!input.UnresolvedObject) continue;
+
+    const cached = objectCache.get(input.UnresolvedObject.objectId);
+    if (!cached) continue;
+
+    if (cached.version && !input.UnresolvedObject.version) {
+      input.UnresolvedObject.version = cached.version;
+    }
+
+    if (cached.digest && !input.UnresolvedObject.digest) {
+      input.UnresolvedObject.digest = cached.digest;
+    }
+  }
+
+  return next();
+}
 
 export default function ValidatorDashboard() {
   const currentAccount = useCurrentAccount();
@@ -26,16 +52,16 @@ export default function ValidatorDashboard() {
   const router = useRouter();
 
   // Validate environment variable
-  const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
   useEffect(() => {
-    if (!packageId) {
+    if (!PACKAGE_ID) {
       toast.error('Configuration error: Package ID is not defined.');
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     async function fetchAidRequests() {
-      if (!currentAccount?.address) {
+      if (!currentAccount?.address || !PACKAGE_ID) {
         setLoading(false);
         return;
       }
@@ -87,21 +113,36 @@ export default function ValidatorDashboard() {
   }, [currentAccount]);
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
-    if (!currentAccount || !packageId) {
-      toast.error('Unable to process: No wallet connected or invalid configuration.');
+    if (!currentAccount) {
+      toast.error('Please connect your wallet.');
       return;
     }
+    if (!PACKAGE_ID) {
+      toast.error('Invalid configuration: Package ID missing.');
+      return;
+    }
+    if (!/^0x[0-9a-fA-F]{64}$/.test(id)) {
+      toast.error('Invalid request ID.');
+      return;
+    }
+
     setSubmitting({ id, action });
 
     try {
       const tx = new Transaction();
-      tx.moveCall({
-        target: `${packageId}::aid_request::mark_${action}ed`,
+      tx.addBuildPlugin(objectCachePlugin);
+
+      tx.add(Commands.MoveCall({
+        target: `${PACKAGE_ID}::aid_request::mark_${action}ed`,
         arguments: [tx.object(id)],
-      });
+      }));
 
       signAndExecuteTransaction(
-        { transaction: tx, chain: 'sui:testnet' },
+        {
+          transaction: tx as any, // Temporary cast to bypass TS2322; remove after dependency fix
+          chain: 'sui:testnet',
+          account: currentAccount,
+        },
         {
           onSuccess: () => {
             toast.success(`Request ${action}ed successfully`);
@@ -119,6 +160,7 @@ export default function ValidatorDashboard() {
         }
       );
     } catch (err) {
+      console.error(`Error during ${action}:`, err);
       toast.error(`Unexpected error during ${action}: ${(err as Error).message}`);
       setSubmitting(null);
     }
@@ -137,21 +179,21 @@ export default function ValidatorDashboard() {
 
   return (
     <ProtectedRoute allowedRoles={['validator']}>
-      <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">Validator Dashboard</h1>
+      <div className="max-w-6xl mx-auto p-6 bg-gray-900 min-h-screen">
+        <h1 className="text-3xl font-bold mb-6 text-center text-purple-400">Validator Dashboard</h1>
         {loading ? (
           <div className="flex justify-center">
-            <Spinner size="lg" className="text-gray-500" />
+            <Spinner size="lg" className="text-gray-400" />
           </div>
         ) : requests.length === 0 ? (
-          <p className="text-center text-gray-500">No pending requests.</p>
+          <p className="text-center text-gray-400">No pending requests.</p>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedRequests.map((req) => (
                 <div
                   key={req.id}
-                  className="border rounded-lg shadow p-4 bg-white flex flex-col justify-between"
+                  className="border border-gray-700 rounded-lg shadow p-4 bg-gray-800 flex flex-col justify-between"
                   role="article"
                   aria-labelledby={`request-title-${req.id}`}
                 >
@@ -167,19 +209,19 @@ export default function ValidatorDashboard() {
                   <div>
                     <h2
                       id={`request-title-${req.id}`}
-                      className="text-xl font-semibold mb-1"
+                      className="text-xl font-semibold mb-1 text-gray-100"
                     >
                       {req.title}
                     </h2>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-gray-400 mb-2">
                       📍 {req.location || 'Unknown'} • 🏷️ {req.category || 'Uncategorized'}
                     </p>
-                    <p className="text-gray-700 mb-2">
+                    <p className="text-gray-300 mb-2">
                       {req.description && req.description.length > 100
                         ? req.description.slice(0, 100) + '...'
                         : req.description || 'No description provided'}
                     </p>
-                    <p className="text-xs text-gray-500 mb-3">
+                    <p className="text-xs text-gray-400 mb-3">
                       Status: {getStatusLabel(req.status ?? 0)}
                     </p>
                   </div>
@@ -219,18 +261,18 @@ export default function ValidatorDashboard() {
                 <button
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
-                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  className="px-4 py-2 bg-gray-700 text-gray-100 rounded hover:bg-gray-600 disabled:opacity-50"
                   aria-label="Previous page"
                 >
                   Previous
                 </button>
-                <span className="px-4 py-2">
+                <span className="px-4 py-2 text-gray-100">
                   Page {page} of {totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page === totalPages}
-                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  className="px-4 py-2 bg-gray-700 text-gray-100 rounded hover:bg-gray-600 disabled:opacity-50"
                   aria-label="Next page"
                 >
                   Next

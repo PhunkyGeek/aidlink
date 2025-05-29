@@ -59,6 +59,16 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth/logout-loading');
+    } catch (err) {
+      console.error('Logout error:', err);
+      router.push('/auth/logout-loading'); // Proceed to loading page even on error
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -92,10 +102,7 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
 
           <div className="px-4 py-2">
             <button
-              onClick={() => {
-                logout();
-                router.push('/login');
-              }}
+              onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 text-white bg-red-600 hover:bg-red-700 rounded-md py-2"
             >
               <RiLogoutBoxRLine /> Logout
