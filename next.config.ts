@@ -8,8 +8,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Set to true ONLY if you want to bypass TS errors on deploy
   },
+  reactStrictMode: true,
+  swcMinify: true,
+  // Add any existing configurations
   images: {
-    domains: ['ipfs.io', 'ipfs.w3s.link'], // Add your IPFS or other image domains
+    domains: ['firebasestorage.googleapis.com', 'ipfs.io', 'ipfs.w3s.link'],
   },
 };
 
