@@ -4,7 +4,7 @@ import { useUserStore } from '@/store/useUserStore';
 import { getUserRole, Role } from '@/utils/getUserRole';
 
 /**
- * Initiates zkLogin by redirecting to Sui Wallet login page.
+ * Initiates the zkLogin by redirecting to Sui Wallet login page.
  */
 export async function initiateZkLogin() {
   const redirect = `${window.location.origin}/auth/zklogin/callback`;
