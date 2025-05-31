@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "touch .next/export-detail.json",
+    "postbuild": "",
     "start": "next start",
     "lint": "next lint"
   },
