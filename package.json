@@ -14,6 +14,7 @@
     "@hookform/resolvers": "^5.0.1",
     "@mysten/dapp-kit": "^0.16.4",
     "@mysten/sui": "^1.30.1",
+    "@netlify/next": "^1.4.9",
     "@scure/bip39": "^1.6.0",
     "@web3-storage/w3up-client": "^17.2.0",
     "crypto-js": "^4.2.0",
