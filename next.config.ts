@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true, // Set to true ONLY if you want to bypass TS errors on deploy
   },
   reactStrictMode: true,
-  output: 'standalone',
   // Add any existing configurations
   images: {
     domains: ['firebasestorage.googleapis.com', 'ipfs.io', 'ipfs.w3s.link'],
