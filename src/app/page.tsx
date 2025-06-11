@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { RiLoginBoxLine, RiUserHeartLine } from 'react-icons/ri';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { initiateZkLogin } from '@/lib/zkLogin';
 
 function Loader() {
   const [isVisible, setIsVisible] = useState(true);
@@ -103,12 +105,18 @@ export default function Home() {
         <Link href="/" className="hover:underline">
           Skip
         </Link>
-        <Link
-          href="/auth/zklogin/callback"
+        <button
+          onClick={async () => {
+            try {
+              await initiateZkLogin();
+            } catch (error) {
+              toast.error(`Failed to initiate zkLogin: ${String(error)}`);
+            }
+          }}
           className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-800 transition"
         >
           Sign In
-        </Link>
+        </button>
       </footer>
     </div>
   );
