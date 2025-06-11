@@ -2,23 +2,21 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useUserStore } from '@/store/useUserStore';
+import { useUserStore, UserState } from '@/store/useUserStore';
 import ThemeSwitch from './ThemeSwitch';
 import UserMenu from './UserMenu';
 import { RiMenuLine, RiMenuFoldLine } from 'react-icons/ri';
 import toast from 'react-hot-toast';
 
+// Define Navbar props for sidebar and menu toggling
 interface NavbarProps {
   onMenuClick?: () => void;
   onSidebarToggle?: () => void;
   isSidebarVisible?: boolean;
 }
 
-// Define possible roles for type safety
-type UserRole = 'donor' | 'recipient' | 'validator' | 'admin' | undefined;
-
-// Map roles to routes
-const getLogoRoute = (role: UserRole): string => {
+// Map roles to routes for logo navigation
+const getLogoRoute = (role: UserState['role']): string => {
   if (role && !['donor', 'recipient', 'validator', 'admin'].includes(role)) {
     toast.error(`Invalid user role: ${role}`);
   }
@@ -37,9 +35,11 @@ const getLogoRoute = (role: UserRole): string => {
 };
 
 export default function Navbar({ onMenuClick, onSidebarToggle, isSidebarVisible }: NavbarProps) {
-  const { address, role } = useUserStore();
+  // Use UserState directly from store
+  const { id, address, role } = useUserStore();
 
-  if (!address) return null; // Don't render navbar if not signed in
+  // Don't render navbar if user is not signed in (no Firestore ID)
+  if (!id) return null;
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-black border-b px-4 py-3 flex justify-between items-center shadow-sm w-full">
@@ -67,7 +67,7 @@ export default function Navbar({ onMenuClick, onSidebarToggle, isSidebarVisible 
           <RiMenuLine size={24} />
         </button>
 
-        <Link href={getLogoRoute(role as UserRole)} className="flex items-center" aria-label="AidLink Home">
+        <Link href={getLogoRoute(role)} className="flex items-center" aria-label="AidLink Home">
           <Image
             src="/navbar-logo.png"
             alt="AidLink Logo"
@@ -82,7 +82,14 @@ export default function Navbar({ onMenuClick, onSidebarToggle, isSidebarVisible 
       {/* Right section */}
       <div className="flex items-center gap-4">
         <ThemeSwitch />
-        <UserMenu address={address} role={role} />
+        {/* Pass all relevant user state to UserMenu */}
+        <UserMenu
+          id={id}
+          address={address}
+          role={role}
+          displayName={useUserStore.getState().displayName}
+          photoURL={useUserStore.getState().photoURL}
+        />
       </div>
     </nav>
   );

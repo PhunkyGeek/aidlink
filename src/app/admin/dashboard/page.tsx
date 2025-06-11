@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { Spinner } from '@/components/ui/Spinner';
 import { AidRequest } from '../../../../types/aid-request';
+import { getStatusLabel } from '@/utils/statusMap';
 
 // Disable SSG
 export const dynamic = 'force-dynamic';
@@ -24,29 +25,29 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState({ users: 0, donors: 0, validators: 0, requests: 0 });
   const [recentRequests, setRecentRequests] = useState<AidRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
   const { address, role, displayName } = useUserStore();
   const router = useRouter();
 
   useEffect(() => {
     if (!auth || !db) {
       toast.error('Authentication or database service unavailable');
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 
     if (!address || role !== 'admin') {
-      // toast.error('Unauthorized access');
-      router.replace('/login');
+      toast.error('Unauthorized access');
+      router.replace('/auth/login');
       return;
     }
 
     setLoading(true);
-    const userRolesQuery = query(collection(db, 'userRoles'));
+    const usersQuery = query(collection(db, 'users'));
     const aidRequestsQuery = query(collection(db, 'aidRequests'));
 
-    const unsubscribeUserRoles = onSnapshot(
-      userRolesQuery,
+    const unsubscribeUsers = onSnapshot(
+      usersQuery,
       (snapshot) => {
         let users = 0,
           donors = 0,
@@ -60,7 +61,7 @@ export default function AdminDashboardPage() {
         setStats((prev) => ({ ...prev, users, donors, validators }));
       },
       (error) => {
-        console.error('Error fetching user roles:', error);
+        console.error('Error fetching users:', error);
         toast.error('Failed to load user data');
       }
     );
@@ -73,11 +74,11 @@ export default function AdminDashboardPage() {
             id: doc.id,
             ...doc.data(),
           } as AidRequest))
-          .sort((a, b) =>
-            sortAsc
-              ? (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0)
-              : (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)
-          );
+          .sort((a, b) => {
+            const aDate = a.createdAt?.toDate().getTime() ?? 0;
+            const bDate = b.createdAt?.toDate().getTime() ?? 0;
+            return sortAsc ? aDate - bDate : bDate - aDate;
+          });
         setStats((prev) => ({ ...prev, requests: requests.length }));
         setRecentRequests(requests.slice(0, 5));
       },
@@ -89,25 +90,10 @@ export default function AdminDashboardPage() {
 
     setLoading(false);
     return () => {
-      unsubscribeUserRoles();
+      unsubscribeUsers();
       unsubscribeAidRequests();
     };
   }, [sortAsc, router, address, role]);
-
-  const getStatusText = (status: number | undefined): string => {
-    switch (status) {
-      case 0:
-        return 'Pending';
-      case 1:
-        return 'Approved';
-      case 2:
-        return 'Funded';
-      case 3:
-        return 'Rejected';
-      default:
-        return 'Unknown';
-    }
-  };
 
   if (loading) {
     return (
@@ -170,6 +156,7 @@ export default function AdminDashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-400 border-b border-gray-700">
+                <th className="pb-2">Title</th>
                 <th className="pb-2">Requester</th>
                 <th className="pb-2">Created</th>
                 <th className="pb-2">Location</th>
@@ -183,16 +170,15 @@ export default function AdminDashboardPage() {
                   key={req.id}
                   className="border-b border-gray-700 hover:bg-gray-700/50"
                 >
+                  <td className="py-2">{req.title || 'N/A'}</td>
                   <td className="py-2">{req.requesterName || 'Unknown'}</td>
                   <td className="py-2">
-                    {req.createdAt?.seconds
-                      ? new Date(req.createdAt.seconds * 1000).toLocaleDateString()
-                      : 'N/A'}
+                    {req.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                   </td>
                   <td className="py-2">{req.location || 'N/A'}</td>
-                  <td className="py-2 capitalize">{getStatusText(req.status)}</td>
+                  <td className="py-2 capitalize">{getStatusLabel(req.status)}</td>
                   <td className="py-2">
-                    {req.fundedAmount !== undefined ? `${req.fundedAmount} SUI` : 'N/A'}
+                    {req.totalFunded !== undefined ? `${req.totalFunded} SUI` : 'N/A'}
                   </td>
                 </tr>
               ))}

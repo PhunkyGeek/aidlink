@@ -1,46 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Transaction, Commands, BuildTransactionOptions, TransactionDataBuilder } from '@mysten/sui/transactions';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { getClient } from '@/utils/w3up-client';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
+import toast from 'react-hot-toast';
 import { FaMapMarkerAlt, FaFileUpload, FaHeading, FaRegEdit, FaLayerGroup, FaDollarSign, FaHandHoldingHeart } from 'react-icons/fa';
 import Image from 'next/image';
-import toast from 'react-hot-toast';
-
-const PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID || '';
-
-// Simple object cache plugin for transaction building
-const objectCache = new Map<string, { objectId: string; version: string; digest: string }>();
-function objectCachePlugin(
-  transactionData: TransactionDataBuilder,
-  _options: BuildTransactionOptions,
-  next: () => Promise<void>,
-) {
-  for (const input of transactionData.inputs) {
-    if (!input.UnresolvedObject) continue;
-
-    const cached = objectCache.get(input.UnresolvedObject.objectId);
-    if (!cached) continue;
-
-    if (cached.version && !input.UnresolvedObject.version) {
-      input.UnresolvedObject.version = cached.version;
-    }
-
-    if (cached.digest && !input.UnresolvedObject.digest) {
-      input.UnresolvedObject.digest = cached.digest;
-    }
-  }
-
-  return next();
-}
+import { useUserStore } from '@/store/useUserStore';
 
 export default function SubmitAidPage() {
   const router = useRouter();
   const currentAccount = useCurrentAccount();
-  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-
+  const { id, role } = useUserStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -49,124 +24,108 @@ export default function SubmitAidPage() {
   const [targetAmount, setTargetAmount] = useState('');
   const [uploading, setUploading] = useState(false);
 
+  // Validate authentication and role
+  useEffect(() => {
+    if (!auth || !db) {
+      toast.error('Firebase not initialized');
+      return;
+    }
+
+    if (!id || !currentAccount || role !== 'recipient') {
+      toast.error('Please connect a wallet');
+      return;
+    }
+  }, [id, currentAccount, role, router]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setMediaFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (!file.type.match(/image\/.*|video\/.*/)) {
+        toast.error('Only images or videos are allowed');
+        return;
+      }
+      setMediaFile(file);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!currentAccount) {
-      toast.error('Please connect your wallet');
+    if (!currentAccount || !id || role !== 'recipient' || !db || !auth) {
+      toast.error('Please connect your wallet as a recipient');
       return;
     }
 
-    if (!title.trim()) {
-      toast.error('Title is required');
-      return;
-    }
-
-    if (!description.trim()) {
-      toast.error('Description is required');
-      return;
-    }
-
-    if (!mediaFile) {
-      toast.error('Media file is required');
-      return;
-    }
-
-    if (!location.trim()) {
-      toast.error('Location is required');
-      return;
-    }
-
-    if (!category || !['Food', 'Health', 'Shelter', 'Education', 'Emergency'].includes(category)) {
-      toast.error('Valid category is required');
+    if (!title.trim() || !description.trim() || !mediaFile || !location.trim() || !category || !targetAmount) {
+      toast.error('All fields are required');
       return;
     }
 
     const targetAmountNum = Number(targetAmount);
-    if (targetAmount && (isNaN(targetAmountNum) || targetAmountNum < 0)) {
-      toast.error('Valid target amount is required');
+    if (isNaN(targetAmountNum) || targetAmountNum <= 0 || targetAmountNum > 1_000_000) {
+      toast.error('Target amount must be between 0.01 and 1,000,000 SUI');
       return;
     }
 
-    if (!PACKAGE_ID) {
-      toast.error('Contract configuration missing');
+    if (!['Food', 'Healthcare', 'Shelter', 'Education', 'Emergency'].includes(category)) {
+      toast.error('Valid category is required');
       return;
     }
 
     setUploading(true);
+    const requestId = uuidv4();
 
     try {
-      // Upload file to Web3.Storage
-      let cid = '';
+      // Upload media to Web3.Storage
+      let cid = null;
       try {
         const client = await getClient();
         const uploadResult = await client.uploadFile(mediaFile);
-        cid = uploadResult?.toString() || '';
-      } catch (uploadError: any) {
+        cid = uploadResult?.toString() || null;
+      } catch (uploadError) {
         console.error('File upload failed:', uploadError);
         toast.error('Media upload failed, proceeding without media');
       }
 
-      // Prepare transaction
-      const tx = new Transaction();
-      tx.addBuildPlugin(objectCachePlugin);
-
-      const categoryMap: Record<string, number> = {
-        Food: 0,
-        Health: 1,
-        Shelter: 2,
-        Education: 3,
-        Emergency: 4,
+      // Create request in Firestore
+      const requestRef = doc(db, 'requests', requestId);
+      const requestData = {
+        requestId,
+        recipientId: id,
+        recipientAddress: currentAccount.address,
+        title: title.trim(),
+        description: description.trim(),
+        mediaCid: cid,
+        location: location.trim(),
+        category,
+        amount: targetAmountNum,
+        totalFunded: 0,
+        status: 'Pending',
+        suiObjectId: null,
+        suiTransactionDigest: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
+      await setDoc(requestRef, requestData);
 
-      tx.add(Commands.MoveCall({
-        target: `${PACKAGE_ID}::aid_request::create_request`,
-        arguments: [
-          tx.pure.string(title.trim()),
-          tx.pure.string(description.trim()),
-          tx.pure.string(cid),
-          tx.pure.string(location.trim()),
-          tx.pure.u8(categoryMap[category]),
-          tx.pure.u64(BigInt(targetAmountNum * 1_000_000_000 || 0)), // Convert SUI to MIST
-        ],
-      }));
-
-      signAndExecuteTransaction(
-        {
-          transaction: tx as any, // Temporary cast to bypass TS2322; remove after dependency fix
-          chain: 'sui:testnet',
-          account: currentAccount,
-        },
-        {
-          onSuccess: () => {
-            toast.success('Aid request submitted successfully!');
-            router.push('/submit-aid/success');
-          },
-          onError: (error) => {
-            console.error('Transaction failed:', error);
-            toast.error('Submission failed: ' + error.message);
-            // router.push('/submit-aid/success');
-          },
-          onSettled: () => setUploading(false),
-        }
-      );
+      toast.success('Aid request submitted successfully!');
+      router.push('/submit-aid/success');
     } catch (error: any) {
       console.error('Submission error:', error);
-      toast.error('Submission failed: ' + error.message);
-      // router.push('/submit-aid/success');
+      try {
+        await setDoc(doc(db, 'requests', requestId), { status: 'Error', updatedAt: new Date().toISOString() }, { merge: true });
+      } catch (setError) {
+        console.error('Failed to update request status:', setError);
+      }
+      toast.error('Submission failed: ' + (error.message || 'Unknown error'));
+    } finally {
       setUploading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-cover bg-center flex items-center justify-center px-4 py-8 dark:bg-gray-900">
-      <div className="absolute right-0 top-140 bottom-0 z-0 flex items-center justify-end pr-4">
+      <div className="absolute right-4 top-4 bottom-0 z-0 flex items-center justify-end">
         <Image
           src="/aid-request-bg.png"
           alt="Aid Request Background"
@@ -177,98 +136,103 @@ export default function SubmitAidPage() {
         />
       </div>
       <div className="relative z-10 bg-gray-800 shadow-lg rounded-lg p-6 w-full max-w-2xl space-y-5 transition-all duration-300">
-        <div className="flex justify-center items-center gap-4 mb-4">
-          <FaHandHoldingHeart className="text-purple-600 text-2xl" />
+        <div className="flex justify-center items-center gap-4 mb-6">
+          <FaHandHoldingHeart className="text-purple-500 text-2xl" />
           <h1 className="text-2xl font-bold text-gray-100">
             Create Aid Request
           </h1>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="flex items-center border border-gray-700 px-3 py-2 rounded">
+          <div className="flex items-center border border-gray-600 px-3 py-2 rounded-lg">
             <FaHeading className="mr-2 text-gray-400" />
             <input
               type="text"
               placeholder="Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-transparent focus:outline-none text-gray-100"
+              className="w-full bg-transparent text-gray-100 focus:outline-none"
               required
             />
           </div>
 
-          <div className="flex items-start border border-gray-700 px-3 py-2 rounded">
-            <FaRegEdit className="mt-1 mr-2 text-gray-400" />
+          <div className="flex items-start border border-gray-600 px-3 py-2 rounded-lg">
+            <FaRegEdit className="mt-1 mr-4 text-gray-400" />
             <textarea
               placeholder="Description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-transparent focus:outline-none resize-none h-24 text-gray-100"
+              className="w-full bg-transparent text-gray-100 focus:outline-none resize-none h-24"
               required
             />
           </div>
 
-          <div className="flex items-center border border-gray-700 px-3 py-2 rounded">
-            <FaFileUpload className="mr-2 text-gray-400" />
+          <div className="flex items-center border border-gray-600 px-3 py-2 rounded-lg">
+            <FaFileUpload className="mr-4 text-gray-400" />
             <input
               type="file"
               onChange={handleFileChange}
               accept="image/*,video/*"
-              className="w-full text-gray-100"
+              className="w-full text-gray-100 text-sm"
               required
             />
           </div>
 
-          <div className="flex items-center border border-gray-700 px-3 py-2 rounded">
-            <FaMapMarkerAlt className="mr-2 text-gray-400" />
+          <div className="flex items-center border border-gray-600 px-3 py-2 rounded-lg">
+            <FaMapMarkerAlt className="mr-4 text-gray-400" />
             <input
               type="text"
               placeholder="Location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full bg-transparent focus:outline-none text-gray-100"
+              className="w-full bg-transparent text-gray-100 focus:outline-none"
               required
             />
           </div>
 
-          <div className="flex items-center border border-gray-700 px-3 py-2 rounded">
-            <FaLayerGroup className="mr-2 text-gray-400" />
+          <div className="flex items-center border border-gray-600 px-3 py-2 rounded-lg">
+            <FaLayerGroup className="mr-4 text-gray-400" />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-transparent text-gray-100 focus:outline-none"
+              className="w-full bg-gray-800 text-gray-100 focus:outline-none"
               required
             >
-              <option value="" className="text-gray-100 bg-gray-400">Select Category</option>
+              <option value="" className="text-gray-400">
+                Select Category
+              </option>
               <option value="Food">Food</option>
-              <option value="Health">Healthcare</option>
+              <option value="Healthcare">Healthcare</option>
               <option value="Shelter">Shelter</option>
               <option value="Education">Education</option>
               <option value="Emergency">Emergency</option>
             </select>
           </div>
 
-          <div className="flex items-center border border-gray-700 px-3 py-2 rounded">
-            <FaDollarSign className="mr-2 text-gray-400" />
+          <div className="flex items-center border border-gray-600 px-3 py-2 rounded-lg">
+            <FaDollarSign className="mr-4 text-gray-400" />
             <input
               type="number"
               placeholder="Target Amount (SUI)"
               value={targetAmount}
               onChange={(e) => setTargetAmount(e.target.value)}
-              className="w-full bg-transparent focus:outline-none text-gray-100"
-              min="0"
+              className="w-full bg-transparent text-gray-100 focus:outline-none"
+              min="0.01"
               step="0.01"
+              required
             />
           </div>
 
           <button
             type="submit"
-            disabled={uploading || !currentAccount}
-            className={`w-full bg-purple-600 text-white font-semibold py-2 rounded transition-all ${
-              uploading || !currentAccount ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700'
+            disabled={uploading || !currentAccount || role !== "recipient"}
+            className={`w-full bg-purple-600 text-white font-semibold py-2 rounded-lg transition-all duration-200 ${
+              uploading || !currentAccount || role !== "recipient"
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-purple-700"
             }`}
           >
-            {uploading ? 'Submitting...' : 'Submit Request'}
+            {uploading ? "Submitting..." : "Submit Request"}
           </button>
         </form>
       </div>

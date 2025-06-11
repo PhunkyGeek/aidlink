@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 // Validate environment variables
 const requiredEnvVars = [
@@ -49,3 +50,4 @@ export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
 export const googleAuthProvider = app ? new GoogleAuthProvider() : null;
 export const facebookAuthProvider = app ? new FacebookAuthProvider() : null;
+export const functions = app ? getFunctions(app) : null;

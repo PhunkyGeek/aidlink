@@ -10,12 +10,11 @@ import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { getStatusLabel } from '@/utils/statusMap';
 import { Spinner } from '@/components/ui/Spinner';
-import { AidRequest } from '../../../types/aid-request';
+import { SuiAidRequest } from '../../../types/aid-request';
 
 const client = new SuiClient({ url: getFullnodeUrl('testnet') });
 const PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID || '';
 
-// Simple object cache plugin for transaction building
 const objectCache = new Map<string, { objectId: string; version: string; digest: string }>();
 function objectCachePlugin(
   transactionData: TransactionDataBuilder,
@@ -43,15 +42,14 @@ function objectCachePlugin(
 export default function ValidatorDashboard() {
   const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  const [requests, setRequests] = useState<AidRequest[]>([]);
+  const [requests, setRequests] = useState<SuiAidRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const requestsPerPage = 9; // 3x3 grid
+  const requestsPerPage = 9;
   const router = useRouter();
 
-  // Validate environment variable
   useEffect(() => {
     if (!PACKAGE_ID) {
       toast.error('Configuration error: Package ID is not defined.');
@@ -87,13 +85,13 @@ export default function ValidatorDashboard() {
             const fields = (rawContent as any).fields;
             return {
               id: obj.data!.objectId,
-              title: fields.title,
-              description: fields.description,
-              location: fields.location,
-              category: fields.category,
-              mediaCid: fields.media_cid,
-              status: fields.status,
-            } as AidRequest;
+              title: fields.title || '',
+              description: fields.description || '',
+              location: fields.location || '',
+              category: fields.category || '',
+              mediaCid: fields.media_cid || undefined,
+              status: fields.status ?? 0,
+            } as SuiAidRequest;
           });
 
         setRequests(filtered);
@@ -139,7 +137,7 @@ export default function ValidatorDashboard() {
 
       signAndExecuteTransaction(
         {
-          transaction: tx as any, // Temporary cast to bypass TS2322; remove after dependency fix
+          transaction: tx as any,
           chain: 'sui:testnet',
           account: currentAccount,
         },
@@ -222,7 +220,7 @@ export default function ValidatorDashboard() {
                         : req.description || 'No description provided'}
                     </p>
                     <p className="text-xs text-gray-400 mb-3">
-                      Status: {getStatusLabel(req.status ?? 0)}
+                      Status: {getStatusLabel(req.status)}
                     </p>
                   </div>
                   <div className="flex gap-2 mt-auto">
@@ -262,7 +260,6 @@ export default function ValidatorDashboard() {
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
                   className="px-4 py-2 bg-gray-700 text-gray-100 rounded hover:bg-gray-600 disabled:opacity-50"
-                  aria-label="Previous page"
                 >
                   Previous
                 </button>
@@ -273,7 +270,6 @@ export default function ValidatorDashboard() {
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page === totalPages}
                   className="px-4 py-2 bg-gray-700 text-gray-100 rounded hover:bg-gray-600 disabled:opacity-50"
-                  aria-label="Next page"
                 >
                   Next
                 </button>

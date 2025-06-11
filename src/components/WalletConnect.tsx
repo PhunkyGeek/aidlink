@@ -1,4 +1,3 @@
-// src/components/WalletConnect.tsx
 'use client';
 
 import { useState } from 'react';
@@ -8,50 +7,95 @@ import {
   useDisconnectWallet,
   useWallets,
 } from '@mysten/dapp-kit';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useUserStore } from '@/store/useUserStore';
 import toast from 'react-hot-toast';
-import { RiWallet3Fill } from 'react-icons/ri';
 import { WalletCreationModal } from './WalletCreationalModal';
 import { Spinner } from './ui/Spinner';
+import { RiWallet3Fill } from 'react-icons/ri';
 
 export function WalletConnect() {
   const account = useCurrentAccount();
   const { mutate: disconnect } = useDisconnectWallet();
   const { mutate: connect, isPending: isConnecting } = useConnectWallet();
   const wallets = useWallets();
-  const { role, setAddress } = useUserStore();
+  const { role, setAddress, setIsConnected } = useUserStore();
   const [showCreationModal, setShowCreationModal] = useState(false);
 
   const handleConnect = async () => {
     try {
       const suiWallet = wallets.find((w) => w.name === 'Sui Wallet');
-
-      if (suiWallet) {
-        await connect({ wallet: suiWallet });
-        toast.success('Wallet connected');
-      } else {
+      if (!suiWallet) {
         setShowCreationModal(true);
+        return;
       }
-    } catch (err) {
-      console.error(err);
+
+      await connect({ wallet: suiWallet });
+
+      const currentUser = auth?.currentUser;
+      if (currentUser && db) {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await setDoc(
+          userRef,
+          {
+            address: suiWallet.accounts[0].address,
+            isConnected: true,
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+        setAddress(suiWallet.accounts[0].address);
+        setIsConnected(true);
+      }
+    } catch (error: any) {
+      console.error('Connect failed:', error);
       toast.error('Failed to connect wallet');
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
     try {
       disconnect();
       setAddress(null);
+      setIsConnected(false);
+
+      const currentUser = auth?.currentUser;
+      if (currentUser && db) {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await setDoc(
+          userRef,
+          { isConnected: false, updatedAt: new Date() },
+          { merge: true }
+        );
+      }
+
       toast.success('Wallet disconnected');
-    } catch (err) {
-      console.error(err);
+    } catch (error: any) {
+      console.error('Disconnect failed:', error);
       toast.error('Failed to disconnect');
     }
   };
 
-  const handleWalletCreated = (address: string) => {
+  const handleWalletCreated = async (address: string) => {
     setAddress(address);
+    setIsConnected(true);
     setShowCreationModal(false);
+
+    const currentUser = auth?.currentUser;
+    if (currentUser && db) {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(
+        userRef,
+        {
+          address,
+          isConnected: true,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+    }
+
     toast.success('Wallet created and connected!');
   };
 

@@ -1,7 +1,6 @@
-// src/app/connect-rec-wallet/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   useSuiClientQuery,
   useCurrentAccount,
@@ -18,19 +17,32 @@ import {
   RiWallet3Fill,
 } from 'react-icons/ri';
 import { Spinner } from '@/components/ui/Spinner';
-import { useFetchFundedRequests } from '@/hooks/useFetchFundedRequests';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useUserStore } from '@/store/useUserStore';
 import toast from 'react-hot-toast';
 import QRCode from 'react-qr-code';
 import Link from 'next/link';
 import { IconConnectWallet } from '@/components/ui/IconConnectWallet';
 import { WalletConnect } from '@/components/WalletConnect';
 
+interface FundedRequest {
+  id: string;
+  title: string;
+  amount: number;
+  fundedPercent: number;
+  status: string;
+}
+
 export default function ConnectRecWalletPage() {
   const account = useCurrentAccount();
+  const { isConnected } = useUserStore();
   const [showBalance, setShowBalance] = useState(false);
   const [activeTab, setActiveTab] = useState<'transfer' | 'receive'>('transfer');
   const [transferAmount, setTransferAmount] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
+  const [fundedRequests, setFundedRequests] = useState<FundedRequest[]>([]);
+  const [isFundedRequestsLoading, setIsFundedRequestsLoading] = useState(true);
   
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   
@@ -40,99 +52,115 @@ export default function ConnectRecWalletPage() {
     { enabled: !!account?.address, refetchInterval: 5000 }
   );
   
-  const { fundedRequests, isLoading: isFundedRequestsLoading } = useFetchFundedRequests(account?.address);
-
   const formattedBalance = balance ? 
-    (parseInt(balance.totalBalance) / 10**9 ): 
+    (parseInt(balance.totalBalance) / 10**9) : 
     0;
 
-    const handleTransfer = async () => {
-      if (!account) {
-        toast.error('Please connect your wallet');
+  // Fetch recipient's funded requests using Firebase
+  useEffect(() => {
+    const fetchFundedRequests = async () => {
+      if (!db || !account?.address) {
+        setIsFundedRequestsLoading(false);
         return;
       }
-    
-      if (!transferAmount || !recipientAddress) {
-        toast.error('Please fill all fields');
-        return;
-      }
-    
-      const amount = parseFloat(transferAmount);
-      if (amount > formattedBalance) {
-        toast.error('Insufficient balance');
-        return;
-      }
-    
+      setIsFundedRequestsLoading(true);
       try {
-        toast.loading('Processing transfer...');
-        
-        const tx = new Transaction();
-        
-        // Convert amount to MIST (1 SUI = 10^9 MIST) and serialize as u64
-        const amountInMist = BigInt(Math.floor(amount * 10**9));
-        const serializedAmount = tx.pure.u64(amountInMist);
-        
-        // Serialize recipient address using the new address helper
-        const serializedRecipient = tx.pure.address(recipientAddress);
-        
-        // Split coins with serialized amount
-        const [coin] = tx.splitCoins(tx.gas, [serializedAmount]);
-        
-        // Transfer with serialized objects
-        tx.transferObjects([coin], serializedRecipient);
-    
-        await signAndExecuteTransaction(
-          {
-            transaction: tx,  // Changed from transactionBlock to transaction
-            chain: 'sui:testnet',
-          },
-          {
-            onSuccess: (result) => {
-              toast.success(`Transaction successful! Digest: ${result.digest}`);
-              setTransferAmount('');
-              setRecipientAddress('');
-            },
-            onError: (error) => {
-              toast.error(`Transaction failed: ${error.message}`);
-            },
-          }
+        const requestsQuery = query(
+          collection(db, 'requests'),
+          where('recipientAddress', '==', account.address),
+          where('status', 'in', ['Pending', 'Completed'])
         );
-      } catch (error) {
-        toast.error('Transaction failed');
-        console.error(error);
+        const querySnapshot = await getDocs(requestsQuery);
+        const requestsData: FundedRequest[] = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          title: doc.data().title,
+          amount: doc.data().amount,
+          fundedPercent: (doc.data().totalFunded / doc.data().amount) * 100,
+          status: doc.data().status,
+        }));
+        setFundedRequests(requestsData);
+      } catch (error: any) {
+        console.error('Error fetching funded requests:', error);
+        toast.error('Failed to load funded requests');
       } finally {
-        toast.dismiss();
+        setIsFundedRequestsLoading(false);
       }
     };
+    fetchFundedRequests();
+  }, [account?.address]);
+
+  const handleTransfer = async () => {
+    if (!account) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+  
+    if (!transferAmount || !recipientAddress) {
+      toast.error('Please fill all fields');
+      return;
+    }
+  
+    const amount = parseFloat(transferAmount);
+    if (amount > formattedBalance) {
+      toast.error('Insufficient balance');
+      return;
+    }
+  
+    try {
+      toast.loading('Processing transfer...');
+      
+      const tx = new Transaction();
+      
+      const amountInMist = BigInt(Math.floor(amount * 10**9));
+      const serializedAmount = tx.pure.u64(amountInMist);
+      const serializedRecipient = tx.pure.address(recipientAddress);
+      
+      const [coin] = tx.splitCoins(tx.gas, [serializedAmount]);
+      tx.transferObjects([coin], serializedRecipient);
+  
+      await signAndExecuteTransaction(
+        {
+          transaction: tx,
+          chain: 'sui:testnet',
+        },
+        {
+          onSuccess: (result) => {
+            toast.success(`Transaction successful! Digest: ${result.digest}`);
+            setTransferAmount('');
+            setRecipientAddress('');
+          },
+          onError: (error) => {
+            toast.error(`Transaction failed: ${error.message}`);
+          },
+        }
+      );
+    } catch (error) {
+      toast.error('Transaction failed');
+      console.error(error);
+    } finally {
+      toast.dismiss();
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-4 sm:p-6 lg:p-8">
       {/* Header with wallet connection */}
-      <header className="flex justify-between items-center mb-6 md:mb-8">
-        <h1 className="text-xl md:text-2xl font-bold text-purple-400">
+      <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-purple-400 mb-4 sm:mb-0">
           AidLink Wallet
         </h1>
-        <div className="flex items-center">
+        <div className="flex items-center gap-4">
           <IconConnectWallet />
-          <div className="ml-5">
-            <WalletConnect />
-          </div>
+          {!isConnected && <WalletConnect />}
         </div>
-
-        {/* {account?.address ? (
-          <p>Connected as: {account.address}</p>
-        ) : (
-          <p>Not connected</p>
-        )} */}
       </header>
 
       {/* Main content */}
       <main className="max-w-4xl mx-auto">
-        {/* Wallet Balance Section */}
-        {
-          <section className="bg-gray-800 rounded-xl p-4 md:p-6 mb-6 md:mb-8">
+        {account && (
+          <section className="bg-gray-800 rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                 <RiWallet3Fill className="text-purple-400" />
                 Wallet Balance
               </h2>
@@ -148,14 +176,14 @@ export default function ConnectRecWalletPage() {
               </button>
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <p className="text-gray-400 text-sm">Total Balance</p>
                 {isBalanceLoading ? (
                   <Spinner size="md" className="my-2" />
                 ) : (
                   <>
-                    <p className="text-2xl md:text-3xl font-bold">
+                    <p className="text-2xl sm:text-3xl font-bold">
                       {showBalance
                         ? `${formattedBalance.toFixed(2)} SUI`
                         : "••••••"}
@@ -170,10 +198,10 @@ export default function ConnectRecWalletPage() {
                 )}
               </div>
 
-              <div className="flex gap-3 w-full md:w-auto">
+              <div className="flex gap-3 w-full sm:w-auto">
                 <button
                   onClick={() => setActiveTab("transfer")}
-                  className={`flex-1 md:flex-none flex flex-col items-center justify-center gap-1 p-3 rounded-lg ${
+                  className={`flex-1 sm:flex-none flex flex-col items-center justify-center gap-1 p-3 rounded-lg ${
                     activeTab === "transfer"
                       ? "bg-purple-600"
                       : "bg-gray-700 hover:bg-gray-600"
@@ -184,7 +212,7 @@ export default function ConnectRecWalletPage() {
                 </button>
                 <button
                   onClick={() => setActiveTab("receive")}
-                  className={`flex-1 md:flex-none flex flex-col items-center justify-center gap-1 p-3 rounded-lg ${
+                  className={`flex-1 sm:flex-none flex flex-col items-center justify-center gap-1 p-3 rounded-lg ${
                     activeTab === "receive"
                       ? "bg-purple-600"
                       : "bg-gray-700 hover:bg-gray-600"
@@ -197,7 +225,7 @@ export default function ConnectRecWalletPage() {
             </div>
 
             {/* Receive Section */}
-            {activeTab === "receive" && account && (
+            {activeTab === "receive" && (
               <div className="mt-4 p-4 bg-gray-700 rounded-lg">
                 <div className="flex flex-col items-center">
                   <div className="w-48 h-48 bg-white p-4 mb-4 flex items-center justify-center rounded-lg">
@@ -245,19 +273,19 @@ export default function ConnectRecWalletPage() {
               </div>
             )}
           </section>
-        }
+        )}
 
         {/* Transfer section */}
         {activeTab === "transfer" && (
-          <section className="bg-gray-800 rounded-xl p-4 md:p-6 mb-6 md:mb-8">
+          <section className="bg-gray-800 rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="flex items-center gap-2 mb-4">
               <RiSendPlaneFill className="text-purple-400 text-xl" />
-              <h2 className="text-lg md:text-xl font-semibold">
+              <h2 className="text-lg sm:text-xl font-semibold">
                 Transfer Funds
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
               {/* Transfer form */}
               <div className="bg-gray-700 rounded-lg p-4">
                 <div className="mb-4">
@@ -356,10 +384,10 @@ export default function ConnectRecWalletPage() {
         )}
 
         {/* Funded Requests History section */}
-        <section className="bg-gray-800 rounded-xl p-4 md:p-6">
+        <section className="bg-gray-800 rounded-xl p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
             <RiHistoryLine className="text-purple-400 text-xl" />
-            <h2 className="text-lg md:text-xl font-semibold">
+            <h2 className="text-lg sm:text-xl font-semibold">
               Recently Funded Requests
             </h2>
           </div>

@@ -10,6 +10,11 @@ export function useAuthInit() {
   const { setAddress, setRole } = useUserStore();
 
   useEffect(() => {
+    if (!auth) {
+      console.error('Firebase Auth not initialized');
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setAddress(user.uid);
@@ -21,6 +26,6 @@ export function useAuthInit() {
       }
     });
 
-    return () => unsubscribe(); // cleanup
+    return () => unsubscribe();
   }, [setAddress, setRole]);
 }

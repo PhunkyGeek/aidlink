@@ -4,15 +4,9 @@ import toast from 'react-hot-toast';
 
 export type Role = 'admin' | 'validator' | 'donor' | 'recipient';
 
-export type UserRole = {
-  id: string;
-  role: Role;
-  createdManually?: boolean;
-};
-
-export async function getUserRole(address: string): Promise<Role> {
-  if (!address || typeof address !== 'string') {
-    toast.error('Invalid wallet address');
+export async function getUserRole(userId: string): Promise<Role> {
+  if (!userId || typeof userId !== 'string') {
+    toast.error('Invalid user ID');
     return 'donor';
   }
 
@@ -22,19 +16,15 @@ export async function getUserRole(address: string): Promise<Role> {
   }
 
   try {
-    const docRef = doc(db, 'userRoles', address);
+    const docRef = doc(db, 'users', userId);
     const snapshot = await getDoc(docRef);
 
     if (snapshot.exists()) {
-      const data = snapshot.data() as UserRole;
-      if (data.role === 'admin' && data.createdManually !== true) {
-        toast.error('Admin access denied: Not manually created');
-        return 'donor';
-      }
-      return data.role;
+      const data = snapshot.data();
+      return data.role || 'donor';
     }
 
-    toast.error('No role found: Defaulting to donor');
+    toast.error('No user found: Defaulting to donor');
     return 'donor';
   } catch (error: any) {
     console.error('Error fetching user role:', error);
@@ -43,10 +33,10 @@ export async function getUserRole(address: string): Promise<Role> {
   }
 }
 
-export async function setUserRole(address: string, role: Role): Promise<void> {
-  if (!address || typeof address !== 'string') {
-    toast.error('Invalid wallet address');
-    throw new Error('Invalid address');
+export async function setUserRole(userId: string, role: Role): Promise<void> {
+  if (!userId || typeof userId !== 'string') {
+    toast.error('Invalid user ID');
+    throw new Error('Invalid user ID');
   }
 
   if (!Object.values(['admin', 'validator', 'donor', 'recipient']).includes(role)) {
@@ -60,15 +50,8 @@ export async function setUserRole(address: string, role: Role): Promise<void> {
   }
 
   try {
-    const docRef = doc(db, 'userRoles', address);
-    const snapshot = await getDoc(docRef);
-
-    if (snapshot.exists() && snapshot.data().role === 'admin') {
-      toast.error('Cannot overwrite admin role');
-      return;
-    }
-
-    await setDoc(docRef, { role }, { merge: true });
+    const docRef = doc(db, 'users', userId);
+    await setDoc(docRef, { role, updatedAt: new Date() }, { merge: true });
     toast.success(`Role set to ${role}`);
   } catch (error: any) {
     console.error('Error setting role:', error);

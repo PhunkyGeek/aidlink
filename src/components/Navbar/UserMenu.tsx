@@ -4,20 +4,18 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { logout } from '@/lib/auth';
+import { UserState } from '@/store/useUserStore';
 import { RiLogoutBoxRLine, RiUser3Line, RiSettings4Line, RiMoneyDollarCircleLine, RiQuestionLine } from 'react-icons/ri';
 
-interface Props {
-  address: string | null;
-  role: string | null;
-  name?: string | null;
-  photoURL?: string | null;
-}
+// Use UserState interface directly from useUserStore
+interface UserMenuProps extends Pick<UserState, 'id' | 'address' | 'role' | 'displayName' | 'photoURL'> {}
 
-export default function UserMenu({ address, role, name, photoURL }: Props) {
+export default function UserMenu({ id, address, role, displayName, photoURL }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Display user icon or initials
   const displayIcon = () => {
     if (photoURL) {
       return (
@@ -31,7 +29,7 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
       );
     }
 
-    const letter = (name || role || '?').charAt(0).toUpperCase();
+    const letter = ( role || '?').charAt(0).toUpperCase();
 
     return (
       <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-tr from-indigo-400 to-purple-600 text-white font-bold border border-white">
@@ -40,15 +38,16 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
     );
   };
 
+  // Handle menu toggle
   const handleClick = () => {
-    if (!address) {
-      router.push('/login');
+    if (!id) {
+      router.push('/auth/login');
     } else {
       setOpen((prev) => !prev);
     }
   };
 
-  // Close on outside click
+  // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -59,6 +58,7 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle logout
   const handleLogout = async () => {
     try {
       await logout();
@@ -74,28 +74,31 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
       <button
         onClick={handleClick}
         className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-600 text-white text-sm font-bold flex items-center justify-center border border-white"
-        title={address ? role ?? 'User' : 'Click to login'}
+        title={id ? role ?? 'User' : 'Click to login'}
       >
         {displayIcon()}
       </button>
 
-      {open && address && (
+      {open && id && (
         <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 text-sm">
           <div className="px-4 py-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-              {(name || role || '?').charAt(0).toUpperCase()}
+              {(displayName || role || '?').charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col">
-              <span className="font-medium text-gray-800 dark:text-white">{name || role}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {address.slice(0, 6)}...{address.slice(-4)}
-              </span>
+              <span className="font-medium text-gray-800 dark:text-white">{displayName || role}</span>
+              {address && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Wallet: {address.slice(0, 6)}...{address.slice(-4)}
+                </span>
+              )}
+              <span className="text-xs text-gray-500 dark:text-gray-400">ID: {id.slice(0, 6)}</span>
             </div>
           </div>
 
           <hr className="border-gray-200 dark:border-gray-700" />
 
-          <MenuItem icon={<RiUser3Line />} text="My Profile" onClick={() => router.push('/profile')} />
+          <MenuItem icon={<RiUser3Line />} text="My Profile" onClick={() => router.push(`/profile/${id}`)} />
           <MenuItem icon={<RiSettings4Line />} text="Settings" onClick={() => router.push('/settings')} />
           <MenuItem icon={<RiMoneyDollarCircleLine />} text="Pricing" onClick={() => router.push('/pricing')} />
           <MenuItem icon={<RiQuestionLine />} text="FAQ" onClick={() => router.push('/faq')} />
@@ -114,6 +117,7 @@ export default function UserMenu({ address, role, name, photoURL }: Props) {
   );
 }
 
+// MenuItem component for dropdown items
 interface MenuItemProps {
   icon: React.ReactNode;
   text: string;
@@ -128,6 +132,6 @@ function MenuItem({ icon, text, onClick }: MenuItemProps) {
     >
       {icon}
       <span>{text}</span>
-    </button>
+   </button>
   );
 }

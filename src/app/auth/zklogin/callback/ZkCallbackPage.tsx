@@ -2,17 +2,17 @@
 
 import { useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { jwtToAddress } from '@mysten/sui/zklogin';
-import { useUserStore } from '@/store/useUserStore';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useUserStore } from '@/store/useUserStore';
+import { handleZkLoginCallback } from '@/lib/zkLogin';
 import toast from 'react-hot-toast';
 import { Spinner } from '@/components/ui/Spinner';
 
 export default function ZkCallbackPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setUser, setRole } = useUserStore();
+  const { setUser } = useUserStore();
 
   useEffect(() => {
     async function handleCallback() {
@@ -26,51 +26,48 @@ export default function ZkCallbackPage() {
       }
 
       try {
-        // Retrieve salt
+        // Retrieve salt from localStorage
         let userSalt: string | null = null;
         if (typeof window !== 'undefined') {
           userSalt = localStorage.getItem('zk_salt');
         }
 
         if (!userSalt) {
-          if (!db) {
-            throw new Error('Firestore database not initialized');
-          }
-          const tempAddress = jwtToAddress(token, '0');
-          const userDoc = await getDoc(doc(db, 'users', tempAddress));
-          userSalt = userDoc.data()?.salt;
+          throw new Error('User salt not found. Please initiate zkLogin again.');
         }
 
-        if (!userSalt) {
-          throw new Error('User salt not found');
+        // Handle zkLogin callback
+        const role = await handleZkLoginCallback({ token, salt: userSalt, redirect });
+
+        // Update Firestore
+        if (!db) {
+          throw new Error('Firestore database not initialized');
+        }
+        const address = useUserStore.getState().address;
+        if (!address) {
+          throw new Error('Address not set in user store');
         }
 
-        // Compute address
-        const address = jwtToAddress(token, userSalt);
+        await setDoc(doc(db, 'users', address), {
+          userId: address, // Use address as ID (no Firebase UID)
+          email: null,
+          address,
+          role,
+          displayName: null,
+          photoURL: null,
+          isConnected: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }, { merge: true });
 
-        // Fetch role from Firestore
-        let role: 'donor' | 'recipient' | 'validator' | 'admin' = 'donor';
-        if (db) {
-          const userRoleDoc = await getDoc(doc(db, 'userRoles', address));
-          const fetchedRole = userRoleDoc.data()?.role;
-          if (['donor', 'recipient', 'validator', 'admin'].includes(fetchedRole)) {
-            role = fetchedRole as typeof role;
-          }
-        }
-
-        // Store user data
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('zk_token', token);
-          localStorage.setItem('zk_salt', userSalt);
-        }
-
+        // Update user store (redundant but ensures consistency)
         setUser({
+          id: null, // No Firebase UID
           address,
           role,
           displayName: null,
           photoURL: null,
         });
-        setRole(role);
 
         toast.success('ZkLogin successful');
         router.replace(redirect);
@@ -82,7 +79,7 @@ export default function ZkCallbackPage() {
     }
 
     handleCallback();
-  }, [searchParams, router, setUser, setRole]);
+  }, [searchParams, router, setUser]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">

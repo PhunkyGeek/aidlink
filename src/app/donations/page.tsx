@@ -1,14 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  useCurrentAccount,
-  useSuiClientQuery,
-} from '@mysten/dapp-kit';
-import type { VaultCardProps as VaultCardData } from '@/components/VaultCard';
+import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
 import VaultCard from '@/components/VaultCard';
+import { doc, Firestore, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+// import { getStatusLabel } from '@/utils/statusMap';
 
-// Type for a raw on-chain object
+interface VaultCardData {
+  id: string;
+  title: string;
+  description: string;
+  recipientAddress: string;
+  amount: number;
+  totalFunded: number;
+  requestId: string;
+  mediaCid?: string;
+  location: string;
+  category: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Funded' | 'Completed' | 'Error';
+  suiObjectId: string | null;
+}
+
 interface SuiObjectData {
   data?: {
     objectId: string;
@@ -16,10 +29,15 @@ interface SuiObjectData {
     content: {
       fields: {
         title: string;
+        description: string;
         recipient: string;
-        amount: string;
+        amount: number;
+        total_funded: number;
         request_id: string;
         media_cid?: string;
+        location: string;
+        category: string;
+        status: number;
       };
     };
   };
@@ -37,52 +55,94 @@ export default function DonationsPage() {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!data?.data) return;
+    const fetchVaultsAndMetadata = async () => {
+      if (!db) {
+        console.warn('Firestore is not initialized.');
+        setError('Unable to fetch donations. Please try again later.');
+        setLoading(false);
+        return;
+      }
 
+      if (!data?.data) {
+        setLoading(false);
+        return;
+      }
+
+      try {
         const filteredVaults = (data.data as SuiObjectData[]).filter(
           (obj) => obj.data?.type.includes('aid_vault::AidVault')
         );
 
-        const formatted: VaultCardData[] = filteredVaults.map((vault) => {
-          const fields = vault.data!.content.fields;
-          const mediaUrl = fields.media_cid
-            ? `https://${fields.media_cid}.ipfs.w3s.link`
-            : '';
+        const statusMap: Record<number, VaultCardData['status']> = {
+          0: 'Pending',
+          1: 'Approved',
+          2: 'Rejected',
+          3: 'Funded',
+          4: 'Completed',
+        };
 
-          return {
-            id: vault.data!.objectId,
-            title: fields.title,
-            recipient: fields.recipient,
-            amount: fields.amount,
-            requestId: fields.request_id,
-            mediaUrl,
-          };
-        });
+        const formattedVaults: VaultCardData[] = await Promise.all(
+          filteredVaults.map(async (vault) => {
+            const fields = vault.data!.content.fields;
 
-        setVaults(formatted);
+            // Fetch metadata from Firestore
+            let metadata: Partial<VaultCardData> = {};
+            try {
+              const requestDoc = await getDoc(doc(db as Firestore, 'requests', fields.request_id));
+              if (requestDoc.exists()) {
+                const docData = requestDoc.data();
+                metadata = {
+                  title: docData.title,
+                  description: docData.description,
+                  mediaCid: docData.mediaCid,
+                  category: docData.category,
+                  location: docData.location,
+                  suiObjectId: docData.suiObjectId,
+                };
+              }
+            } catch (err) {
+              console.warn('Metadata fetch failed for request:', fields.request_id, err);
+            }
+
+            return {
+              id: fields.request_id,
+              title: metadata.title || fields.title || 'Untitled',
+              description: metadata.description || fields.description || 'No description provided.',
+              recipientAddress: fields.recipient,
+              amount: fields.amount / 1_000_000_000, // Convert MIST to SUI
+              totalFunded: (fields.total_funded ?? 0) / 1_000_000_000, // Convert MIST to SUI
+              requestId: fields.request_id,
+              mediaCid: metadata.mediaCid || fields.media_cid,
+              location: metadata.location || fields.location || 'Unknown',
+              category: metadata.category || fields.category || 'Uncategorized',
+              status: statusMap[fields.status] || 'Error',
+              suiObjectId: metadata.suiObjectId || null,
+            };
+          })
+        );
+
+        setVaults(formattedVaults);
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching vaults:', err);
         setError('Failed to fetch your donations.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchVaultsAndMetadata();
   }, [data]);
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-6">My Donations</h1>
+      <h1 className="text-3xl font-semibold text-center mb-6 text-gray-100">My Donations</h1>
 
       {loading || isLoading ? (
-        <p className="text-center">Loading donations...</p>
+        <div className="text-center text-gray-400">Loading donations...</div>
       ) : error ? (
-        <p className="text-center text-red-600">{error}</p>
+        <div className="text-center text-red-400">{error}</div>
       ) : vaults.length === 0 ? (
-        <p className="text-center">You haven’t made any donations yet.</p>
+        <div className="text-center text-gray-400">You haven’t made any donations yet.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {vaults.map((vault) => (

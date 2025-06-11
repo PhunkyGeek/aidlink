@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
           <div className="text-green-400">
             <p>Reset link sent! Check your inbox.</p>
             <Link
-              href="/login"
+              href="/auth/login"
               className="text-sm text-purple-400 hover:text-purple-300 block mt-4"
             >
               ← Back to Login
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
 
         {!sent && (
           <Link
-            href="/login"
+            href="/auth/login"
             className="text-sm text-purple-400 hover:text-purple-300 block mt-4"
           >
             ← Back to Login

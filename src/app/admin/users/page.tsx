@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useUserStore } from '@/store/useUserStore';
-import { UserRole } from '@/utils/getUserRole';
+import { Role } from '@/utils/getUserRole';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Spinner } from '@/components/ui/Spinner';
 import toast from 'react-hot-toast';
@@ -13,11 +13,18 @@ import { RiArrowUpDownLine } from 'react-icons/ri';
 
 export const dynamic = 'force-dynamic';
 
+interface User {
+  id: string;
+  address?: string;
+  role: Role;
+  email?: string;
+}
+
 export default function UsersPage() {
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortAsc, setSortAsc] = useState(true);
-  const { address, role} = useUserStore();
+  const { address, role } = useUserStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -29,30 +36,32 @@ export default function UsersPage() {
 
     if (!address || role !== 'admin') {
       toast.error('Unauthorized access');
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 
     setLoading(true);
-    const usersQuery = query(collection(db, 'userRoles'));
+    const usersQuery = query(collection(db, 'users'));
 
     const unsubscribe = onSnapshot(
       usersQuery,
       (snapshot) => {
-        const userData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as UserRole)).sort((a, b) =>
-          sortAsc
-            ? a.role.localeCompare(b.role)
-            : b.role.localeCompare(a.role)
-        );
-        setUserRoles(userData);
+        const userData = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          } as User))
+          .sort((a, b) =>
+            sortAsc
+              ? a.role.localeCompare(b.role)
+              : b.role.localeCompare(a.role)
+          );
+        setUsers(userData);
         setLoading(false);
       },
       (error) => {
         console.error('Error fetching users:', error);
-        toast.error('Failed to load user roles');
+        toast.error('Failed to load users');
         setLoading(false);
       }
     );
@@ -84,7 +93,7 @@ export default function UsersPage() {
               Sort by Role ({sortAsc ? 'Asc' : 'Desc'})
             </button>
           </div>
-          {userRoles.length === 0 ? (
+          {users.length === 0 ? (
             <p className="text-gray-400">No users found.</p>
           ) : (
             <table className="w-full text-sm">
@@ -92,16 +101,18 @@ export default function UsersPage() {
                 <tr className="text-left text-gray-400 border-b border-gray-700">
                   <th className="pb-2">Address</th>
                   <th className="pb-2">Role</th>
+                  <th className="pb-2">Email</th>
                 </tr>
               </thead>
               <tbody>
-                {userRoles.map((user: UserRole) => (
+                {users.map((user) => (
                   <tr
                     key={user.id}
                     className="border-b border-gray-700 hover:bg-gray-700/50"
                   >
-                    <td className="py-2 font-mono text-sm">{user.id}</td>
-                    <td className="py-2 capitalize">{user.role}</td>
+                    <td className="py-2 font-mono text-sm">{user.address || user.id}</td>
+                    <td className="py-2 capitalize">{user.role || 'None'}</td>
+                    <td className="py-2">{user.email || 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>

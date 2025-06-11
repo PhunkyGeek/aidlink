@@ -6,14 +6,18 @@ import toast from 'react-hot-toast';
 type Role = 'donor' | 'recipient' | 'validator' | 'admin';
 
 export interface UserState {
+  id: string | null;
   address: string | null;
   role: Role | null;
   displayName: string | null;
   photoURL: string | null;
+  isConnected: boolean;
+  setId: (id: string | null) => void;
+  setIsConnected: (isConnected: boolean) => void;
   setAddress: (address: string | null) => void;
   setRole: (role: Role | null) => void;
   setProfile: (name: string | null, photo: string | null) => void;
-  setUser: (user: { address: string | null; role: Role | null; displayName?: string | null; photoURL?: string | null }) => void;
+  setUser: (user: { id?: string | null; address: string | null; role: Role | null; displayName?: string | null; photoURL?: string | null }) => void;
   clearUser: () => void;
 }
 
@@ -23,7 +27,7 @@ const isBrowser = typeof window !== 'undefined';
 // Custom storage with error handling and SSR safety
 const storage: StateStorage = {
   getItem: (name: string): string | null => {
-    if (!isBrowser) return null; // Skip on server
+    if (!isBrowser) return null;
     try {
       return localStorage.getItem(name) ?? null;
     } catch (error) {
@@ -35,7 +39,7 @@ const storage: StateStorage = {
     }
   },
   setItem: (name: string, value: string): void => {
-    if (!isBrowser) return; // Skip on server
+    if (!isBrowser) return;
     try {
       localStorage.setItem(name, value);
     } catch (error) {
@@ -46,7 +50,7 @@ const storage: StateStorage = {
     }
   },
   removeItem: (name: string): void => {
-    if (!isBrowser) return; // Skip on server
+    if (!isBrowser) return;
     try {
       localStorage.removeItem(name);
     } catch (error) {
@@ -60,10 +64,14 @@ const storage: StateStorage = {
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
+      id: null,
       address: null,
       role: null,
       displayName: null,
       photoURL: null,
+      isConnected: false,
+      setId: (id) => set({ id }),
+      setIsConnected: (isConnected) => set({ isConnected }),
       setAddress: (address) => set({ address }),
       setRole: (role) => {
         if (role && !['donor', 'recipient', 'validator', 'admin'].includes(role)) {
@@ -73,26 +81,27 @@ export const useUserStore = create<UserState>()(
         set({ role });
       },
       setProfile: (name, photo) => set({ displayName: name, photoURL: photo }),
-      setUser: ({ address, role, displayName, photoURL }) => {
+      setUser: ({ id, address, role, displayName, photoURL }) => {
         if (role && !['donor', 'recipient', 'validator', 'admin'].includes(role)) {
           toast.error(`Invalid role: ${role}`);
           return;
         }
-        set({ address, role, displayName, photoURL });
+        set({ id, address, role, displayName, photoURL });
       },
-      clearUser: () => set({ address: null, role: null, displayName: null, photoURL: null }),
+      clearUser: () => set({ id: null, address: null, role: null, displayName: null, photoURL: null, isConnected: false }),
     }),
     {
       name: 'user-storage',
       storage: createJSONStorage(() => storage),
       partialize: (state) => ({
+        id: state.id,
         address: state.address,
         role: state.role,
         displayName: state.displayName,
         photoURL: state.photoURL,
       }),
       version: 1,
-      skipHydration: !isBrowser, // Skip hydration on server
+      skipHydration: !isBrowser,
     }
   )
 );

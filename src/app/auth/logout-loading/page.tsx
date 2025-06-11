@@ -9,7 +9,7 @@ export default function LogoutLoading() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push('/login');
+      router.push('/auth/login');
     }, 1000); // 1-second delay for visibility
 
     return () => clearTimeout(timer);

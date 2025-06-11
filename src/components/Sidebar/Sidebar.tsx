@@ -10,10 +10,10 @@ import Image from 'next/image';
 
 
 export default function Sidebar() {
-  const { role, address } = useUserStore();
+  const { role, id } = useUserStore();
 
   // Hide sidebar if not signed in
-  if (!address) return null;
+  if (!id) return null;
 
   const renderSidebarContent = () => {
     switch (role) {

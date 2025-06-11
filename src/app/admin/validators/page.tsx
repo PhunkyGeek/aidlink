@@ -38,7 +38,7 @@ export default function ValidatorsPage() {
 
     if (!address || role !== 'admin') {
       toast.error('Unauthorized access');
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 
