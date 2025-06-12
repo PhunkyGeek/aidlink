@@ -1,7 +1,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { SerialTransactionExecutor, Transaction } from '@mysten/sui/transactions';
-import { MIST_PER_SUI } from '@mysten/sui/utils';
+import { MIST_PER_SUI, fromBase64 } from '@mysten/sui/utils';
 import {
   generateNonce,
   generateRandomness,
@@ -10,13 +10,13 @@ import {
   genAddressSeed,
   jwtToAddress,
 } from '@mysten/sui/zklogin';
-import { fromBase64 } from '@mysten/bcs';
 import axios from 'axios';
 import { jwtDecode, JwtPayload } from 'jwt-decode';
 import { useUserStore } from '@/store/useUserStore';
 import { getUserRole, Role } from '@/utils/getUserRole';
 
-const FULLNODE_URL = process.env.NEXT_PUBLIC_SUI_FAUCET_URL?.replace('/gas', '') || 'https://fullnode.testnet.sui.io';
+const FULLNODE_URL = 'https://fullnode.testnet.sui.io:443'; // Hardcoded Testnet fullnode
+const FAUCET_URL = process.env.NEXT_PUBLIC_SUI_FAUCET_URL || 'https://faucet.testnet.sui.io/v2/gas';
 const PROVER_URL = process.env.NEXT_PUBLIC_SUI_PROVER_URL || 'https://prover-dev.mystenlabs.com/v1';
 const CLIENT_ID = process.env.NEXT_PUBLIC_ZKLOGIN_CLIENT_ID;
 const REDIRECT_URI = process.env.NEXT_PUBLIC_ZKLOGIN_REDIRECT_URI || 'http://localhost:3000/auth/zklogin/callback';
@@ -266,10 +266,22 @@ export async function executeZkLoginTransaction(): Promise<string> {
  */
 export async function requestFaucet(address: string): Promise<void> {
   try {
-    await axios.post(process.env.NEXT_PUBLIC_SUI_FAUCET_URL!, {
+    // Validate faucet URL
+    if (!FAUCET_URL.endsWith('/gas')) {
+      throw new Error(`Invalid faucet URL: ${FAUCET_URL}. Must end with '/gas'`);
+    }
+
+    const response = await axios.post(FAUCET_URL, {
       FixedAmountRequest: { recipient: address },
+    }, {
+      headers: { 'Content-Type': 'application/json' },
     });
+
+    if (response.status !== 200) {
+      throw new Error(`Faucet request failed with status ${response.status}: ${response.statusText}`);
+    }
   } catch (error) {
-    throw new Error(`Faucet request failed: ${String(error)}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Faucet request failed: ${errorMessage}`);
   }
 }
