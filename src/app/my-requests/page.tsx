@@ -58,13 +58,11 @@ export default function MyRequestsPage() {
   useEffect(() => {
     if (!db) {
       toast.error('Firebase not initialized');
-      router.push('/login');
       return;
     }
 
     if (!id && !address || !currentAccount || role !== 'recipient') {
       toast.error('Please connect a wallet');
-      router.push('/login');
       return;
     }
 
@@ -207,7 +205,7 @@ export default function MyRequestsPage() {
                   {requests.filter((r) => r.status === 'Pending').length}
                 </p>
               </div>
-              <Clock className='w-2 h-2' />
+              <Clock className='w-8 h-8 text-orange-400' />
             </div>
           </div>
           <div className='bg-gray-800 rounded-xl p-5 border-l-4 border-red-500'>

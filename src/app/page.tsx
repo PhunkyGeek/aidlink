@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { RiLoginBoxLine, RiUserHeartLine } from 'react-icons/ri';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUserStore } from '@/store/useUserStore';
 import toast from 'react-hot-toast';
 import { initiateZkLogin } from '@/lib/zkLogin';
 
@@ -55,6 +57,19 @@ function Loader() {
 }
 
 export default function Home() {
+  const { id, role } = useUserStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (id && role) {
+      if (role === 'donor') {
+        router.replace('/connect-wallet');
+      } else if (role === 'recipient') {
+        router.replace('/connect-walletr');
+      }
+    }
+  }, [id, role, router]);
+
   return (
     <div className="relative h-screen bg-black text-white flex flex-col overflow-hidden">
       {/* Loader */}

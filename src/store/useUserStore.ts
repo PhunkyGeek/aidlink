@@ -7,17 +7,19 @@ type Role = 'donor' | 'recipient' | 'validator' | 'admin';
 
 export interface UserState {
   id: string | null;
+  email: string | null;
   address: string | null;
   role: Role | null;
   displayName: string | null;
   photoURL: string | null;
   isConnected: boolean;
   setId: (id: string | null) => void;
+  setEmail: (email: string | null) => void;
   setIsConnected: (isConnected: boolean) => void;
   setAddress: (address: string | null) => void;
   setRole: (role: Role | null) => void;
   setProfile: (name: string | null, photo: string | null) => void;
-  setUser: (user: { id?: string | null; address: string | null; role: Role | null; displayName?: string | null; photoURL?: string | null }) => void;
+  setUser: (user: { id?: string | null; email?: string | null; address?: string | null; role?: Role | null; displayName?: string | null; photoURL?: string | null }) => void;
   clearUser: () => void;
 }
 
@@ -65,12 +67,14 @@ export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
       id: null,
+      email: null,
       address: null,
       role: null,
       displayName: null,
       photoURL: null,
       isConnected: false,
       setId: (id) => set({ id }),
+      setEmail: (email) => set({ email }),
       setIsConnected: (isConnected) => set({ isConnected }),
       setAddress: (address) => set({ address }),
       setRole: (role) => {
@@ -81,20 +85,21 @@ export const useUserStore = create<UserState>()(
         set({ role });
       },
       setProfile: (name, photo) => set({ displayName: name, photoURL: photo }),
-      setUser: ({ id, address, role, displayName, photoURL }) => {
+      setUser: ({ id, email, address, role, displayName, photoURL }) => {
         if (role && !['donor', 'recipient', 'validator', 'admin'].includes(role)) {
           toast.error(`Invalid role: ${role}`);
           return;
         }
-        set({ id, address, role, displayName, photoURL });
+        set({ id, email, address, role, displayName, photoURL });
       },
-      clearUser: () => set({ id: null, address: null, role: null, displayName: null, photoURL: null, isConnected: false }),
+      clearUser: () => set({ id: null, email: null, address: null, role: null, displayName: null, photoURL: null, isConnected: false }),
     }),
     {
       name: 'user-storage',
       storage: createJSONStorage(() => storage),
       partialize: (state) => ({
         id: state.id,
+        email: state.email,
         address: state.address,
         role: state.role,
         displayName: state.displayName,

@@ -9,20 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.3",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",
-    "@mysten/dapp-kit": "^0.16.4",
+    "@mysten/dapp-kit": "^0.16.11",
     "@mysten/sui": "^1.32.0",
     "@netlify/next": "^1.4.9",
-    "@scure/bip39": "^1.6.0",
-    "@types/axios": "^0.9.36",
+    "@tanstack/react-query": "^5.80.7",
     "@web3-storage/w3up-client": "^17.2.0",
     "axios": "^1.9.0",
     "crypto-js": "^4.2.0",
     "firebase": "^11.9.0",
     "framer-motion": "^12.12.1",
-    "fs": "^0.0.1-security",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.511.0",
     "next": "15.3.2",
@@ -33,7 +30,8 @@
     "react-icons": "^5.5.0",
     "react-qr-code": "^2.0.15",
     "uuid": "^11.1.0",
-    "zod": "^3.24.4"
+    "zod": "^3.24.4",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

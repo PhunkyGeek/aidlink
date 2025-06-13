@@ -18,15 +18,15 @@ export default function UserMenu({ id, address, role, displayName, photoURL }: U
   // Display user icon or initials
   const displayIcon = () => {
     if (photoURL) {
-      return (
-        <Image
-          src={photoURL}
-          alt="Profile"
-          width={32}
-          height={32}
-          className="w-8 h-8 rounded-full object-cover border border-white"
-        />
-      );
+      // return (
+      //   <Image
+      //     src={photoURL}
+      //     alt="Profile"
+      //     width={32}
+      //     height={32}
+      //     className="w-8 h-8 rounded-full object-cover border border-white"
+      //   />
+      // );
     }
 
     const letter = ( role || '?').charAt(0).toUpperCase();

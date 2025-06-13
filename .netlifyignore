@@ -1,0 +1,7 @@
+node_modules
+.next/cache
+public/large-assets/*
+*.zip
+*.tar.gz
+*.mov
+*.mp4

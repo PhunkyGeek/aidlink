@@ -28,7 +28,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
   const router = useRouter();
-  const { setAddress, setRole, setProfile, setId } = useUserStore();
+  const { id, setRole, setProfile, setId } = useUserStore();
 
   const handleLoginSuccess = async (user: any) => {
     setShowLoader(true);
@@ -107,18 +107,18 @@ export default function LoginForm() {
     }
   };
 
-  const handleZkLogin = async () => {
-    const toastId = toast.loading('Redirecting to Sui Wallet...');
-    try {
-      await initiateZkLogin();
-      toast.success('zkLogin initiated!');
-    } catch (err: any) {
-      console.error('zkLogin error:', err);
-      toast.error('zkLogin failed: ' + err.message);
-    } finally {
-      toast.dismiss(toastId);
-    }
-  };
+  // const handleZkLogin = async () => {
+  //   const toastId = toast.loading('Redirecting to Sui Wallet...');
+  //   try {
+  //     await initiateZkLogin();
+  //     toast.success('zkLogin initiated!');
+  //   } catch (err: any) {
+  //     console.error('zkLogin error:', err);
+  //     toast.error('zkLogin failed: ' + err.message);
+  //   } finally {
+  //     toast.dismiss(toastId);
+  //   }
+  // };
 
   return (
     <div className="bg-black shadow rounded-xl max-w-md w-full p-8">
@@ -127,12 +127,14 @@ export default function LoginForm() {
         <h1 className="text-2xl font-semibold text-gray-100">
           Welcome to AidLink 👋
         </h1>
-        <p className="text-sm text-gray-400">
-          Please sign in to your account
-        </p>
+        <p className="text-sm text-gray-400">Please sign in to your account</p>
       </div>
 
-      <form className="space-y-4" onSubmit={handleEmailLogin} aria-label="Login form">
+      <form
+        className="space-y-4"
+        onSubmit={handleEmailLogin}
+        aria-label="Login form"
+      >
         <FormInput
           type="email"
           value={email}
@@ -143,7 +145,7 @@ export default function LoginForm() {
 
         <div className="relative">
           <FormInput
-            type={showPassword ? 'text' : 'password'}
+            type={showPassword ? "text" : "password"}
             value={password}
             placeholder="Password"
             onChange={(e) => setPassword(e.target.value)}
@@ -153,7 +155,7 @@ export default function LoginForm() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-300"
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <RiEyeOffLine /> : <RiEyeLine />}
           </button>
@@ -164,7 +166,10 @@ export default function LoginForm() {
             <input type="checkbox" className="accent-purple-500" />
             <span>Remember me</span>
           </label>
-          <Link href="/forgot-password" className="text-purple-400 hover:underline">
+          <Link
+            href="/forgot-password"
+            className="text-purple-400 hover:underline"
+          >
             Forgot password?
           </Link>
         </div>
@@ -174,16 +179,16 @@ export default function LoginForm() {
           disabled={loading}
           className={`w-full font-medium py-2 rounded-md transition ${
             loading
-              ? 'bg-purple-400 text-white opacity-70 cursor-not-allowed'
-              : 'bg-purple-600 hover:bg-purple-700 text-white focus:ring-2 focus:ring-purple-400/20'
+              ? "bg-purple-400 text-white opacity-70 cursor-not-allowed"
+              : "bg-purple-600 hover:bg-purple-700 text-white focus:ring-2 focus:ring-purple-400/20"
           }`}
         >
-          {loading ? 'Logging in...' : 'Log In'}
+          {loading ? "Logging in..." : "Log In"}
         </button>
       </form>
 
       <div className="text-center mt-4 text-sm text-gray-400">
-        New on our platform?{' '}
+        New on our platform?{" "}
         <Link href="/auth/register" className="text-purple-400 hover:underline">
           Create an account
         </Link>
@@ -194,13 +199,31 @@ export default function LoginForm() {
       </div>
 
       <div className="flex justify-center gap-4">
-        <IconButton onClick={() => handleOAuthLogin('google')} ariaLabel="Login with Google">
+        <IconButton
+          onClick={() => handleOAuthLogin("google")}
+          ariaLabel="Login with Google"
+        >
           <RiGoogleFill size={20} className="text-red-500" />
         </IconButton>
-        <IconButton onClick={() => handleOAuthLogin('facebook')} ariaLabel="Login with Facebook">
+        <IconButton
+          onClick={() => handleOAuthLogin("facebook")}
+          ariaLabel="Login with Facebook"
+        >
           <RiFacebookFill size={20} className="text-blue-600" />
         </IconButton>
-        <IconButton onClick={handleZkLogin} ariaLabel="zkLogin with Fingerprint">
+        <IconButton
+          onClick={async () => {
+            setLoading(true);
+            try {
+              await initiateZkLogin();
+            } catch (error) {
+              toast.error(`Failed to initiate zkLogin: ${String(error)}`);
+            } finally {
+              setLoading(false);
+            }
+          }}
+          ariaLabel="zkLogin with Fingerprint"
+        >
           <RiFingerprintLine size={20} className="text-purple-500" />
         </IconButton>
       </div>

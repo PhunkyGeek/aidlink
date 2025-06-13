@@ -4,10 +4,10 @@ import toast from 'react-hot-toast';
 
 export type Role = 'admin' | 'validator' | 'donor' | 'recipient';
 
-export async function getUserRole(userId: string): Promise<Role> {
+export async function getUserRole(userId: string): Promise<Role | null> {
   if (!userId || typeof userId !== 'string') {
     toast.error('Invalid user ID');
-    return 'donor';
+    return null;
   }
 
   if (!db) {
@@ -21,15 +21,14 @@ export async function getUserRole(userId: string): Promise<Role> {
 
     if (snapshot.exists()) {
       const data = snapshot.data();
-      return data.role || 'donor';
+      return data.role || null;
     }
 
-    toast.error('No user found: Defaulting to donor');
-    return 'donor';
+    return null;
   } catch (error: any) {
     console.error('Error fetching user role:', error);
     toast.error(`Failed to fetch role: ${error.message}`);
-    return 'donor';
+    return null;
   }
 }
 
